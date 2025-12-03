@@ -60,20 +60,29 @@ if scelta == "📝 NUOVA SCHEDA":
 
     st.markdown("---")
 
-    # --- STEP 2: PROTOCOLLO (FLEX) ---
+    # --- STEP 2: PROTOCOLLO ---
     st.markdown("#### 2. Configurazione Protocollo")
     
     modo_inserimento = st.radio("Modalità Inserimento:", ["Da Listino", "Scrittura Libera"], horizontal=True)
     
     if modo_inserimento == "Da Listino":
-        trattamento_scelto = st.selectbox("Seleziona Trattamento:", list(TRATTAMENTI_STANDARD.keys()))
-        prezzo_singolo = TRATTAMENTI_STANDARD[trattamento_scelto]
+        # MODIFICA: Ora usiamo due colonne anche qui per mostrare il prezzo
+        col_list1, col_list2 = st.columns([2, 1])
+        with col_list1:
+            trattamento_scelto = st.selectbox("Seleziona Trattamento:", list(TRATTAMENTI_STANDARD.keys()))
+        with col_list2:
+            # Recuperiamo il prezzo dal dizionario
+            valore_listino = TRATTAMENTI_STANDARD[trattamento_scelto]
+            # Lo mostriamo ben visibile (ma non modificabile per errore)
+            st.metric(label="Prezzo Singolo (€)", value=valore_listino)
+            prezzo_singolo = valore_listino
     else:
+        # Modalità Manuale
         col_man1, col_man2 = st.columns([2, 1])
         with col_man1:
             trattamento_scelto = st.text_input("Nome Trattamento (Libero):", placeholder="Es. Protocollo Sposa")
         with col_man2:
-            # MODIFICA QUI: Aggiunto min_value=0.0 per bloccare i negativi
+            # Blocchiamo i negativi
             prezzo_singolo = st.number_input("Prezzo 1 Seduta (€):", value=0.0, step=10.0, min_value=0.0)
 
     # Definizione Sedute
@@ -84,7 +93,7 @@ if scelta == "📝 NUOVA SCHEDA":
     with col_b:
         n_vendute = st.number_input("Sedute PROPOSTE:", value=6, min_value=1)
 
-    # Evitiamo divisioni per zero se n_ideali è 0 (sicurezza extra)
+    # Calcolo efficacia
     if n_ideali > 0:
         efficacia = min(int((n_vendute / n_ideali) * 100), 100)
     else:
@@ -105,11 +114,9 @@ if scelta == "📝 NUOVA SCHEDA":
     
     prezzo_totale = prezzo_singolo * n_vendute
     
-    # Menu espandibile "discreto" per lo sconto
+    # Sconto
     with st.expander("⚙️ Opzioni Amministrative (Clicca per modificare)"):
         st.caption("Inserisci qui un importo per ricalcolare il totale.")
-        # min_value=0.0 blocca i negativi
-        # max_value=prezzo_totale impedisce di scontare più del prezzo stesso
         sconto_euro = st.number_input("Riduzione Importo (€):", 
                                      value=0.0, 
                                      step=10.0, 
@@ -126,7 +133,7 @@ if scelta == "📝 NUOVA SCHEDA":
     st.caption("Totale Pacchetto:")
     st.markdown(f"## € {prezzo_finale:.2f}")
 
-    # LOGICA CONDIZIONALE ACCONTO
+    # LOGICA ACCONTO
     acconto = 0.0
     saldo = prezzo_finale
     
@@ -136,7 +143,6 @@ if scelta == "📝 NUOVA SCHEDA":
         col_acc1, col_acc2 = st.columns(2)
         
         with col_acc1:
-            # Acconto bloccato: non può essere negativo, né superiore al totale
             acconto = st.number_input("Versa Oggi (€):", min_value=0.0, max_value=prezzo_finale, step=10.0)
         
         saldo = prezzo_finale - acconto
@@ -148,7 +154,7 @@ if scelta == "📝 NUOVA SCHEDA":
                 st.info("Inserisci acconto per confermare lo sconto.")
 
         if acconto > 0:
-            st.success(f"✅ OFFERTA BLOCCATA! Versa Oggi € {acconto}")
+            st.success(f"✅ OFFERTA BLOCCATA! Versati € {acconto}")
     
     st.markdown("---")
 
@@ -156,7 +162,6 @@ if scelta == "📝 NUOVA SCHEDA":
     if st.button("💾 REGISTRA E COPIA PER RECEPTION", type="primary"):
         if nome_paziente:
             
-            # Testo condizionale per WhatsApp
             if acconto > 0:
                 dettaglio_pagamento = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
             else:
