@@ -42,17 +42,16 @@ TRATTAMENTI = {
 
 # --- MENU PRINCIPALE ---
 st.markdown("### 🏥 Studio Medico & Estetico")
-# Questo menu ti permette di cambiare pagina senza perdere i dati
-scelta = st.radio("Menu:", ["📝 NUOVA VENDITA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
+scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
 # ==========================================
-# SEZIONE 1: VENDITA (PULITA)
+# SEZIONE 1: VENDITA / SCHEDA
 # ==========================================
-if scelta == "📝 NUOVA VENDITA":
+if scelta == "📝 NUOVA SCHEDA":
 
-    # --- STEP 1: CHI È IL PAZIENTE? ---
-    st.markdown("#### 1. Anagrafica")
+    # --- STEP 1: ANAGRAFICA ---
+    st.markdown("#### 1. Anagrafica Paziente")
     col1, col2 = st.columns(2)
     with col1:
         nome_paziente = st.text_input("Nome e Cognome")
@@ -61,39 +60,46 @@ if scelta == "📝 NUOVA VENDITA":
 
     st.markdown("---")
 
-    # --- STEP 2: IL PACCHETTO ---
-    st.markdown("#### 2. Configurazione Pacchetto")
+    # --- STEP 2: PROTOCOLLO ---
+    st.markdown("#### 2. Configurazione Protocollo")
     
     # Selezione del trattamento
-    trattamento_scelto = st.selectbox("Seleziona Trattamento:", list(TRATTAMENTI.keys()))
+    trattamento_scelto = st.selectbox("Seleziona Trattamento da proporre:", list(TRATTAMENTI.keys()))
     prezzo_singolo = TRATTAMENTI[trattamento_scelto]
     
-    # Definizione Sedute (Ideali vs Reali)
+    # Definizione Sedute
     col_a, col_b = st.columns(2)
     with col_a:
-        n_ideali = st.number_input("Sedute IDEALI (Consiglio Medico):", value=8, min_value=1)
+        # Modificato come richiesto (Via "Consiglio Medico")
+        n_ideali = st.number_input("Sedute IDEALI (Protocollo):", value=8, min_value=1)
     with col_b:
-        n_vendute = st.number_input("Sedute nel PACCHETTO:", value=6, min_value=1)
+        n_vendute = st.number_input("Sedute PROPOSTE:", value=6, min_value=1)
 
-    # Barra visiva Efficacia
+    # --- BARRA MIGLIORATA E ACCATTIVANTE ---
+    st.write("") # Spazio vuoto
     efficacia = min(int((n_vendute / n_ideali) * 100), 100)
-    if efficacia < 100:
-        st.progress(efficacia)
-        st.caption(f"⚠️ Attenzione: Stai vendendo il {efficacia}% del ciclo ideale.")
+    
+    # Visualizzazione barra
+    st.progress(efficacia)
+    
+    # Messaggio dinamico sotto la barra
+    if efficacia < 50:
+        st.error(f"🔴 Copertura Protocollo: {efficacia}% - Efficacia Insufficiente")
+    elif efficacia < 100:
+        st.warning(f"🟠 Copertura Protocollo: {efficacia}% - Risultato Parziale (Mantenimento ridotto)")
     else:
-        st.progress(efficacia)
-        st.caption("✅ Ottimo: Protocollo completo.")
+        st.success(f"🟢 Copertura Protocollo: {efficacia}% - Risultato Massimizzato (Top)")
 
     st.markdown("---")
 
-    # --- STEP 3: I SOLDI ---
-    st.markdown("#### 3. Totale e Offerta")
+    # --- STEP 3: ECONOMICO ---
+    st.markdown("#### 3. Proposta Economica")
     
     # Calcolo automatico
     prezzo_totale = prezzo_singolo * n_vendute
     
     # Checkbox per attivare la modalità sconto
-    usa_sconto = st.checkbox("Applica Sconto in Euro (€)")
+    usa_sconto = st.checkbox("Applica Sconto Paziente (€)")
     
     if usa_sconto:
         sconto_euro = st.number_input("Sconto da applicare (€):", value=50.0, step=10.0)
@@ -102,7 +108,8 @@ if scelta == "📝 NUOVA VENDITA":
         # Visualizzazione Prezzi
         st.write(f"Prezzo Listino: <strike style='color:red'>€ {prezzo_totale:.2f}</strike>", unsafe_allow_html=True)
         st.markdown(f"# € {prezzo_finale:.2f}")
-        st.success(f"Risparmio Cliente: € {sconto_euro:.2f}")
+        # Modificato "Cliente" in "Paziente"
+        st.success(f"Risparmio Paziente: € {sconto_euro:.2f}")
     else:
         prezzo_finale = prezzo_totale
         st.markdown(f"# € {prezzo_finale:.2f}")
@@ -123,8 +130,8 @@ if scelta == "📝 NUOVA VENDITA":
             st.session_state.pazienti.append(record)
             st.toast("Salvato!", icon="✅")
             
-            # 2. Generiamo testo per WhatsApp
-            msg = f"""*CLIENTE:* {nome_paziente}
+            # 2. Generiamo testo per WhatsApp (Modificato CLIENTE in PAZIENTE)
+            msg = f"""*PAZIENTE:* {nome_paziente}
 *OGGI:* {trattamento_oggi}
 *PACCHETTO:* {n_vendute}x {trattamento_scelto}
 *TOTALE:* € {prezzo_finale:.2f}"""
@@ -135,7 +142,7 @@ if scelta == "📝 NUOVA VENDITA":
             st.error("Inserisci il nome del paziente!")
 
 # ==========================================
-# SEZIONE 2: L'ARCHIVIO (RECUPERATO)
+# SEZIONE 2: ARCHIVIO
 # ==========================================
 elif scelta == "📂 ARCHIVIO GIORNALIERO":
     st.markdown("#### Pazienti registrati in questa sessione")
