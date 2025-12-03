@@ -154,7 +154,7 @@ if scelta == "📝 NUOVA SCHEDA":
                 st.info("Inserisci acconto per confermare lo sconto.")
 
         if acconto > 0:
-            st.success(f"✅ OFFERTA BLOCCATA! Versati € {acconto}")
+            st.success(f"✅ OFFERTA BLOCCATA! Versa Oggi € {acconto}")
     
     st.markdown("---")
 
