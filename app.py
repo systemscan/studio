@@ -60,34 +60,29 @@ if scelta == "📝 NUOVA SCHEDA":
 
     st.markdown("---")
 
-    # --- STEP 2: PROTOCOLLO (MODIFICATO FLEX) ---
+    # --- STEP 2: PROTOCOLLO (FLEX) ---
     st.markdown("#### 2. Configurazione Protocollo")
     
-    # Scelta Modalità: Listino o Manuale
     modo_inserimento = st.radio("Modalità Inserimento:", ["Da Listino", "Scrittura Libera"], horizontal=True)
     
     if modo_inserimento == "Da Listino":
-        # Vecchio metodo
         trattamento_scelto = st.selectbox("Seleziona Trattamento:", list(TRATTAMENTI_STANDARD.keys()))
         prezzo_singolo = TRATTAMENTI_STANDARD[trattamento_scelto]
-        st.caption(f"Prezzo standard: € {prezzo_singolo}")
     else:
-        # Nuovo metodo Manuale
         col_man1, col_man2 = st.columns([2, 1])
         with col_man1:
             trattamento_scelto = st.text_input("Nome Trattamento (Libero):", placeholder="Es. Protocollo Sposa")
         with col_man2:
             prezzo_singolo = st.number_input("Prezzo 1 Seduta (€):", value=0.0, step=10.0)
 
-    # Definizione Sedute (Uguale per entrambi i metodi)
-    st.write("") # spazietto
+    # Definizione Sedute
+    st.write("") 
     col_a, col_b = st.columns(2)
     with col_a:
         n_ideali = st.number_input("Sedute IDEALI (Protocollo):", value=8, min_value=1)
     with col_b:
         n_vendute = st.number_input("Sedute PROPOSTE:", value=6, min_value=1)
 
-    # Barra Efficacia
     efficacia = min(int((n_vendute / n_ideali) * 100), 100)
     
     st.progress(efficacia)
@@ -100,38 +95,67 @@ if scelta == "📝 NUOVA SCHEDA":
 
     st.markdown("---")
 
-    # --- STEP 3: ECONOMICO (STEALTH) ---
-    st.markdown("#### 3. Proposta Economica")
+    # --- STEP 3: CHIUSURA ECONOMICA (ACCONTO) ---
+    st.markdown("#### 3. Proposta & Acconto")
     
-    # Calcolo basato sul prezzo (che sia da listino o manuale non importa)
     prezzo_totale = prezzo_singolo * n_vendute
     
-    # Menu espandibile "discreto"
+    # Sconto "Discreto"
     with st.expander("⚙️ Opzioni Amministrative (Clicca per modificare)"):
         st.caption("Inserisci qui un importo per ricalcolare il totale.")
         sconto_euro = st.number_input("Riduzione Importo (€):", value=0.0, step=10.0)
 
     prezzo_finale = prezzo_totale - sconto_euro
 
-    # Visualizzazione
+    # Visualizzazione Prezzo Totale
     if sconto_euro > 0:
-        st.write(f"Prezzo Listino: <strike style='color:red'>€ {prezzo_totale:.2f}</strike>", unsafe_allow_html=True)
-        st.markdown(f"# € {prezzo_finale:.2f}")
-        st.success(f"Applicata Riduzione: € {sconto_euro:.2f}")
-    else:
-        st.markdown(f"# € {prezzo_finale:.2f}")
+        st.caption("Prezzo Listino:")
+        st.markdown(f"#### <strike style='color:red'>€ {prezzo_totale:.2f}</strike>", unsafe_allow_html=True)
+    
+    st.caption("Totale Pacchetto:")
+    st.markdown(f"## € {prezzo_finale:.2f}")
+
+    st.markdown("---")
+    
+    # QUI C'È LA MAGIA DELL'ACCONTO
+    st.markdown("##### 🔒 Blocca Prezzo / Acconto")
+    col_acc1, col_acc2 = st.columns(2)
+    
+    with col_acc1:
+        # L'estetista chiede: "Quanto versi oggi per bloccarlo?"
+        acconto = st.number_input("Versa Oggi (€):", min_value=0.0, step=10.0)
+    
+    saldo = prezzo_finale - acconto
+    
+    with col_acc2:
+        if acconto > 0:
+            st.metric(label="DA SALDARE (Rate/Futuro)", value=f"€ {saldo:.2f}")
+        else:
+            st.info("Inserisci un acconto per bloccare l'offerta.")
+
+    # Feedback visivo forte
+    if acconto > 0:
+        st.success(f"✅ OFFERTA BLOCCATA! Il paziente versa € {acconto} oggi.")
 
     st.markdown("---")
 
     # --- SALVATAGGIO ---
     if st.button("💾 REGISTRA E COPIA PER RECEPTION", type="primary"):
         if nome_paziente:
+            
+            # Testo condizionale per WhatsApp
+            if acconto > 0:
+                dettaglio_pagamento = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
+            else:
+                dettaglio_pagamento = f"💰 TOTALE: € {prezzo_finale:.2f} (Nessun acconto)"
+
             record = {
                 "Ora": datetime.datetime.now().strftime("%H:%M"),
                 "Paziente": nome_paziente,
                 "Fatto Oggi": trattamento_oggi,
-                "Pacchetto Venduto": f"{n_vendute}x {trattamento_scelto}",
-                "Incasso Previsto": f"€ {prezzo_finale:.2f}"
+                "Pacchetto": f"{n_vendute}x {trattamento_scelto}",
+                "Totale": f"€ {prezzo_finale:.2f}",
+                "Acconto": f"€ {acconto:.2f}"
             }
             st.session_state.pazienti.append(record)
             st.toast("Salvato!", icon="✅")
@@ -139,7 +163,9 @@ if scelta == "📝 NUOVA SCHEDA":
             msg = f"""*PAZIENTE:* {nome_paziente}
 *OGGI:* {trattamento_oggi}
 *PACCHETTO:* {n_vendute}x {trattamento_scelto}
-*TOTALE:* € {prezzo_finale:.2f}"""
+----------------
+*PREZZO TOTALE:* € {prezzo_finale:.2f}
+{dettaglio_pagamento}"""
             
             st.code(msg, language="markdown")
             st.caption("👆 Tieni premuto, COPIA e manda su WhatsApp.")
