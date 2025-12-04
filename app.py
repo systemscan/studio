@@ -2,8 +2,8 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-# --- CONFIGURAZIONE UFFICIALE v1.1 ---
-st.set_page_config(page_title="Studio Manager v1.1", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.2 ---
+st.set_page_config(page_title="Studio Manager v1.2", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -33,7 +33,7 @@ if "pazienti" not in st.session_state:
 if "carrello" not in st.session_state:
     st.session_state.carrello = []
 
-# --- LISTINO AGGIORNATO (v1.1) ---
+# --- LISTINO AGGIORNATO (v1.2) ---
 TRATTAMENTI_STANDARD = {
     "Vacuum Therapy (20 min)": 80.0,
     "Vacuum Therapy (50 min)": 120.0,
@@ -42,7 +42,11 @@ TRATTAMENTI_STANDARD = {
     "Radiofrequenza Mono e Bipolare": 100.0,
     "Biorivitalizzazione Oro 24K": 200.0,
     "PMP": 150.0,
-    "Esosomi": 150.0
+    "Esosomi": 150.0,
+    "Linfodrenaggio Manuale": 70.0,
+    "Laser Epilazione (Gambe)": 150.0,
+    "Pacchetto Dimagrimento Urto": 90.0,
+    "Pulizia Viso Profonda": 60.0
 }
 
 # --- FUNZIONE GRAFICA: BARRA EMOZIONALE ---
@@ -71,13 +75,13 @@ def crea_barra_emozionale(percentuale):
             <div style="width: {percentuale}%; background-color: {colore}; height: 100%; border-radius: 15px; transition: width 0.5s ease-in-out; box-shadow: 0 0 10px {colore};"></div>
         </div>
         <div style="font-size: 12px; color: gray; margin-top: 5px; font-style: italic;">
-            La copertura è calcolata sulle sedute accettate rispetto al protocollo medico ideale.
+            Efficacia calcolata su quanto acquista il paziente rispetto al protocollo medico.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.1")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.2")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
@@ -98,11 +102,14 @@ if scelta == "📝 NUOVA SCHEDA":
 
     # --- STEP 2: AGGIUNGI TRATTAMENTI (LOOP) ---
     st.markdown("#### 2. Costruzione Preventivo")
-    st.info("Configura un pacchetto e premi 'Aggiungi' per inserirlo nel preventivo.")
+    st.info("Segui il flusso: Scelta -> Proposta -> Accettazione")
 
     # Box Grigio per l'inserimento
     with st.container(border=True):
-        modo_inserimento = st.radio("Sorgente:", ["Da Listino", "Scrittura Libera"], horizontal=True)
+        
+        # A. SCELTA TRATTAMENTO
+        st.markdown("**A. SELEZIONE TRATTAMENTO**")
+        modo_inserimento = st.radio("Sorgente:", ["Da Listino", "Scrittura Libera"], horizontal=True, label_visibility="collapsed")
         
         prezzo_singolo = 0.0
 
@@ -115,48 +122,61 @@ if scelta == "📝 NUOVA SCHEDA":
                 st.metric(label="Prezzo Singolo", value=f"€ {valore_listino}")
                 prezzo_singolo = valore_listino
         else:
-            # Scrittura Libera
             c1, c2 = st.columns([2, 1])
             with c1:
                 trattamento_scelto = st.text_input("Trattamento (Libero):", placeholder="Es. Trattamento Speciale")
             with c2:
                 valore_manuale = st.number_input("Prezzo 1 Seduta:", value=0.0, step=10.0, min_value=0.0)
-                # Mostra Prezzo Grande anche qui
                 if valore_manuale > 0:
                     st.metric(label="Prezzo Impostato", value=f"€ {valore_manuale}")
                 prezzo_singolo = valore_manuale
 
-        st.write("") 
-        
-        # --- NUOVA LOGICA: IDEALI -> PROPOSTE -> ACCETTATE ---
-        col_a, col_b, col_c = st.columns(3)
-        with col_a:
-            n_ideali = st.number_input("Sedute IDEALI:", value=10, min_value=1, help="Protocollo medico standard")
-        with col_b:
-            n_proposte = st.number_input("Sedute PROPOSTE:", value=8, min_value=1, help="Quante ne hai offerte")
-        with col_c:
-            # Questo è il numero che comanda il prezzo e la barra
-            n_accettate = st.number_input("Sedute ACCETTATE:", value=6, min_value=1, help="Quante ne compra il paziente")
+        st.divider()
 
-        # Calcolo percentuale (Sulle accettate vs ideali)
+        # B. DIAGNOSI E PROPOSTA
+        st.markdown("**B. LA TUA PROPOSTA**")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            n_ideali = st.number_input("Sedute IDEALI (Protocollo Medico):", value=10, min_value=1)
+        with col_b:
+            n_proposte = st.number_input("Sedute che PROPONI:", value=8, min_value=1)
+        
+        # VISUALIZZAZIONE COSTO PROPOSTA (Il momento della verità)
+        costo_proposta = prezzo_singolo * n_proposte
+        st.markdown(f"""
+        <div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0;">
+            <span style="color: gray;">Prezzo della tua proposta ({n_proposte} sedute):</span><br>
+            <strong style="font-size: 20px; color: #31333F;">€ {costo_proposta:.2f}</strong>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.divider()
+
+        # C. NEGOZIAZIONE E CHIUSURA
+        st.markdown("**C. COSA ACQUISTA IL PAZIENTE?**")
+        
+        col_acc, col_btn = st.columns([1, 1])
+        with col_acc:
+            # Qui il paziente decide dopo aver visto il prezzo sopra
+            n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=n_proposte, min_value=1, help="Modifica questo numero se il paziente ne vuole meno")
+        
+        # Calcolo efficacia finale (Accettate vs Ideali)
         if n_ideali > 0:
             efficacia = min(int((n_accettate / n_ideali) * 100), 100)
         else:
             efficacia = 0
         
-        # --- BARRA EMOZIONALE ---
         crea_barra_emozionale(efficacia)
 
-        st.write("")
         # Tasto per aggiungere al carrello
-        if st.button("➕ AGGIUNGI AL PREVENTIVO"):
+        st.write("")
+        if st.button("➕ CONFERMA E AGGIUNGI AL CARRELLO", type="secondary", use_container_width=True):
             if prezzo_singolo > 0:
                 nome_display = trattamento_scelto if trattamento_scelto else "Trattamento Personalizzato"
-                # IL PREZZO SI CALCOLA SULLE ACCETTATE
                 totale_riga = prezzo_singolo * n_accettate
                 item = {
                     "Trattamento": nome_display,
-                    "Sedute": n_accettate, # Salviamo le accettate
+                    "Sedute": n_accettate, 
                     "Totale": totale_riga,
                     "Dettaglio": f"{n_accettate}x {nome_display} (€{totale_riga:.0f})"
                 }
@@ -166,7 +186,7 @@ if scelta == "📝 NUOVA SCHEDA":
                 st.error("Inserisci un prezzo valido!")
 
     # --- VISUALIZZAZIONE CARRELLO ---
-    st.markdown("##### 📦 Riepilogo Pacchetti Inseriti")
+    st.markdown("##### 📦 Carrello Paziente")
     
     totale_preventivo = 0.0
     
@@ -175,21 +195,21 @@ if scelta == "📝 NUOVA SCHEDA":
             st.text(f"{i+1}. {item['Dettaglio']}")
             totale_preventivo += item['Totale']
         
-        if st.button("🗑️ Svuota tutto e ricomincia"):
+        if st.button("🗑️ Svuota tutto"):
             st.session_state.carrello = []
             st.rerun()
     else:
-        st.caption("Nessun trattamento ancora aggiunto.")
+        st.caption("Il carrello è vuoto.")
 
     st.markdown("---")
 
     # --- STEP 3: TOTALE E CHIUSURA ---
-    st.markdown("#### 3. Proposta Finale")
+    st.markdown("#### 3. Cassa e Pagamento")
     
     # Sconto
-    with st.expander("⚙️ Opzioni Amministrative (Clicca per modificare)"):
-        st.caption("Inserisci qui un importo per ricalcolare il totale.")
-        sconto_euro = st.number_input("Riduzione Importo (€):", 
+    with st.expander("⚙️ Opzioni Amministrative (Sconto)"):
+        st.caption("Totale attuale carrello:")
+        sconto_euro = st.number_input("Sconto Extra (€):", 
                                      value=0.0, 
                                      step=10.0, 
                                      min_value=0.0, 
@@ -202,7 +222,7 @@ if scelta == "📝 NUOVA SCHEDA":
         st.caption("Totale Listino:")
         st.markdown(f"#### <strike style='color:red'>€ {totale_preventivo:.2f}</strike>", unsafe_allow_html=True)
     
-    st.caption("Totale da Pagare:")
+    st.caption("Totale Finale da Pagare:")
     st.markdown(f"## € {prezzo_finale:.2f}")
 
     # LOGICA ACCONTO
@@ -260,7 +280,7 @@ if scelta == "📝 NUOVA SCHEDA":
             msg = f"""*PAZIENTE:* {nome_paziente}
 *OGGI:* {trattamento_oggi}
 ----------------
-*PREVENTIVO:*
+*ACQUISTA:*
 {lista_pacchetti_str}
 ----------------
 *TOTALE FINALE:* € {prezzo_finale:.2f}
