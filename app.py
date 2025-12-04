@@ -2,7 +2,7 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-# --- CONFIGURAZIONE APP v1.0 ---
+# --- CONFIGURAZIONE UFFICIALE v1.0 ---
 st.set_page_config(page_title="Studio Manager v1.0", layout="centered")
 
 # --- PASSWORD ---
@@ -30,7 +30,6 @@ if not check_password():
 if "pazienti" not in st.session_state:
     st.session_state.pazienti = []
 
-# Qui salviamo i pacchetti temporanei per il paziente corrente
 if "carrello" not in st.session_state:
     st.session_state.carrello = []
 
@@ -43,6 +42,37 @@ TRATTAMENTI_STANDARD = {
     "Pacchetto Dimagrimento Urto": 90.0,
     "Pulizia Viso Profonda": 60.0
 }
+
+# --- FUNZIONE GRAFICA: BARRA EMOZIONALE ---
+def crea_barra_emozionale(percentuale):
+    """Crea una barra di progresso colorata e accattivante in HTML"""
+    
+    # Definizione colori e messaggi
+    if percentuale < 50:
+        colore = "#ff2b2b" # Rosso acceso
+        msg = "⚠️ RISULTATO INSUFFICIENTE"
+    elif percentuale < 90:
+        colore = "#ffa500" # Arancione
+        msg = "⚖️ RISULTATO BUONO (MA PARZIALE)"
+    else:
+        colore = "#00c853" # Verde Smeraldo
+        msg = "⭐ RISULTATO ECCELLENTE (TOP)"
+
+    # HTML/CSS per la barra
+    st.markdown(f"""
+    <div style="margin-top: 10px; margin-bottom: 5px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-weight:bold; color:{colore};">
+            <span>{msg}</span>
+            <span>{percentuale}%</span>
+        </div>
+        <div style="width: 100%; background-color: #e0e0e0; border-radius: 15px; height: 20px;">
+            <div style="width: {percentuale}%; background-color: {colore}; height: 100%; border-radius: 15px; transition: width 0.5s ease-in-out; box-shadow: 0 0 10px {colore};"></div>
+        </div>
+        <div style="font-size: 12px; color: gray; margin-top: 5px; font-style: italic;">
+            Maggiore è la copertura, più duraturo sarà l'effetto estetico.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
 st.markdown("### 🏥 Studio Medico & Estetico - v1.0")
@@ -83,13 +113,13 @@ if scelta == "📝 NUOVA SCHEDA":
                 st.metric(label="Prezzo Singolo", value=f"€ {valore_listino}")
                 prezzo_singolo = valore_listino
         else:
-            # MODIFICA: Scrittura Libera con PREZZO GRANDE
+            # Scrittura Libera
             c1, c2 = st.columns([2, 1])
             with c1:
                 trattamento_scelto = st.text_input("Trattamento (Libero):", placeholder="Es. Protocollo Sposa")
             with c2:
                 valore_manuale = st.number_input("Prezzo 1 Seduta:", value=0.0, step=10.0, min_value=0.0)
-                # Qui mostriamo il numero grande anche se è manuale
+                # Mostra Prezzo Grande anche qui
                 if valore_manuale > 0:
                     st.metric(label="Prezzo Impostato", value=f"€ {valore_manuale}")
                 prezzo_singolo = valore_manuale
@@ -101,23 +131,18 @@ if scelta == "📝 NUOVA SCHEDA":
         with col_b:
             n_vendute = st.number_input("Sedute PROPOSTE:", value=6, min_value=1, key="real")
 
-        # Barra efficacia del singolo pacchetto
+        # Calcolo percentuale
         if n_ideali > 0:
             efficacia = min(int((n_vendute / n_ideali) * 100), 100)
         else:
             efficacia = 0
         
-        st.progress(efficacia)
-        if efficacia < 50:
-            st.caption(f"🔴 Copertura: {efficacia}% (Insufficiente)")
-        elif efficacia < 100:
-            st.caption(f"🟠 Copertura: {efficacia}% (Parziale)")
-        else:
-            st.caption(f"🟢 Copertura: {efficacia}% (Top)")
+        # --- BARRA EMOZIONALE ---
+        crea_barra_emozionale(efficacia)
 
+        st.write("")
         # Tasto per aggiungere al carrello
         if st.button("➕ AGGIUNGI AL PREVENTIVO"):
-            # Controllo che ci sia un nome trattamento e un prezzo
             if prezzo_singolo > 0:
                 nome_display = trattamento_scelto if trattamento_scelto else "Trattamento Personalizzato"
                 totale_riga = prezzo_singolo * n_vendute
