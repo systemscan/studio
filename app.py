@@ -149,18 +149,20 @@ if scelta == "📝 NUOVA SCHEDA":
                 riduzione_applicata = st.number_input("Riduzione (€):", min_value=0.0, max_value=tot_teorico, step=10.0, label_visibility="collapsed")
 
         # LOGICA DI CALCOLO
-        # 1. Calcoliamo il prezzo unitario scontato basandoci sulla proposta
+        # 1. Calcolo del prezzo pieno (senza sconti) per le sedute accettate
+        totale_pieno_riga = prezzo_singolo_base * n_accettate
+        
+        # 2. Calcolo del prezzo unitario scontato
         totale_proposta_netto = (prezzo_singolo_base * n_proposte) - riduzione_applicata
         prezzo_unitario_finale = totale_proposta_netto / n_proposte if n_proposte > 0 else 0
         
-        # 2. Calcoliamo il totale finale basandoci su quante ne ha accettate davvero
+        # 3. Calcolo del totale finale effettivo
         totale_riga_finale = prezzo_unitario_finale * n_accettate
 
         with col_totale:
             # Se c'è una riduzione, mostriamo il prezzo barrato piccolo e quello nuovo grande
             if riduzione_applicata > 0:
-                tot_pieno = prezzo_singolo_base * n_accettate
-                st.markdown(f"<div style='text-align: right; color: gray; font-size: 14px; text-decoration: line-through;'>€ {tot_pieno:.2f}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: right; color: gray; font-size: 14px; text-decoration: line-through;'>€ {totale_pieno_riga:.2f}</div>", unsafe_allow_html=True)
             
             # Totale Grande
             st.markdown(f"<div style='text-align: right; font-size: 28px; font-weight: bold; color: #31333F;'>€ {totale_riga_finale:.2f}</div>", unsafe_allow_html=True)
@@ -187,7 +189,8 @@ if scelta == "📝 NUOVA SCHEDA":
                 item = {
                     "Trattamento": nome_display,
                     "Sedute": n_accettate,
-                    "Totale": totale_riga_finale,
+                    "Totale": totale_riga_finale,      # Prezzo Scontato
+                    "PrezzoPieno": totale_pieno_riga,  # Prezzo Listino Originale
                     "Dettaglio": f"{txt_dettaglio} - € {totale_riga_finale:.2f}"
                 }
                 st.session_state.carrello.append(item)
@@ -198,10 +201,14 @@ if scelta == "📝 NUOVA SCHEDA":
     # --- CARRELLO ---
     st.markdown("##### 📦 Carrello Attuale")
     totale_preventivo = 0.0
+    totale_preventivo_pieno = 0.0
+    
     if len(st.session_state.carrello) > 0:
         for i, item in enumerate(st.session_state.carrello):
             st.text(f"{i+1}. {item['Dettaglio']}")
             totale_preventivo += item['Totale']
+            # Sommiamo anche i prezzi pieni se presenti (per compatibilità)
+            totale_preventivo_pieno += item.get('PrezzoPieno', item['Totale'])
         
         if st.button("🗑️ Svuota Carrello"):
             st.session_state.carrello = []
@@ -214,7 +221,6 @@ if scelta == "📝 NUOVA SCHEDA":
     # --- STEP 3: CASSA FINALE ---
     st.markdown("#### 3. Cassa Finale")
     
-    # Nessuna opzione extra qui, solo somma
     prezzo_finale_cassa = totale_preventivo
 
     st.markdown(f"### Totale da Pagare: € {prezzo_finale_cassa:.2f}")
@@ -244,10 +250,18 @@ if scelta == "📝 NUOVA SCHEDA":
             for item in st.session_state.carrello:
                 lista_str += f"- {item['Dettaglio']}\n"
 
+            # Costruzione dei totali
+            if totale_preventivo < totale_preventivo_pieno:
+                # Se c'è stato sconto, mostriamo entrambi
+                blocco_totali = f"*TOTALE LISTINO:* € {totale_preventivo_pieno:.2f}\n*TOTALE SCONTATO:* € {totale_preventivo:.2f}"
+            else:
+                # Se prezzo pieno, solo uno
+                blocco_totali = f"*TOTALE:* € {totale_preventivo:.2f}"
+
             if acconto > 0:
                 dett = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
             else:
-                dett = f"💰 TOTALE: € {prezzo_finale_cassa:.2f}"
+                dett = "(Saldo completo o pagamento standard)"
 
             st.session_state.pazienti.append({
                 "Ora": datetime.datetime.now().strftime("%H:%M"),
@@ -264,7 +278,7 @@ if scelta == "📝 NUOVA SCHEDA":
 *ACQUISTA:*
 {lista_str}
 ----------------
-*TOTALE:* € {prezzo_finale_cassa:.2f}
+{blocco_totali}
 {dett}"""
             st.code(msg, language="markdown")
             st.caption("👆 Copia e invia su WhatsApp")
