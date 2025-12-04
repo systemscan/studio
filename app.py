@@ -2,8 +2,8 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-# --- CONFIGURAZIONE UFFICIALE v1.0 ---
-st.set_page_config(page_title="Studio Manager v1.0", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.1 (Fix Calcoli) ---
+st.set_page_config(page_title="Studio Manager v1.1", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -33,7 +33,7 @@ if "pazienti" not in st.session_state:
 if "carrello" not in st.session_state:
     st.session_state.carrello = []
 
-# --- LISTINO v1.0 ---
+# --- LISTINO v1.1 ---
 TRATTAMENTI_STANDARD = {
     "Vacuum Therapy (20 min)": 80.0,
     "Vacuum Therapy (50 min)": 120.0,
@@ -74,7 +74,7 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.0")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.1")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
@@ -131,7 +131,7 @@ if scelta == "📝 NUOVA SCHEDA":
 
         st.divider()
 
-        # C. CONFERMA E PREZZO (TUTTO VICINO)
+        # C. CONFERMA E PREZZO
         st.caption("C. CONFERMA PAZIENTE & TOTALE")
         
         col_conferma, col_totale = st.columns([1, 1])
@@ -140,29 +140,25 @@ if scelta == "📝 NUOVA SCHEDA":
             # Qui si decide quante ne fa davvero
             n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=n_proposte, min_value=1)
             
-            # Qui c'è l'opzione "Segreta" vicinissima alla conferma
+            # CALCOLO IMMEDIATO DEL TOTALE PIENO PER QUESTE SEDUTE
+            totale_pieno_reale = prezzo_singolo_base * n_accettate
+            
+            # Opzione "Segreta"
             riduzione_applicata = 0.0
             with st.expander("⚙️ Opzioni"):
-                st.caption("Adeguamento amministrativo (€)")
-                # Calcoliamo il totale teorico della proposta per impostare il limite
-                tot_teorico = prezzo_singolo_base * n_proposte
-                riduzione_applicata = st.number_input("Riduzione (€):", min_value=0.0, max_value=tot_teorico, step=10.0, label_visibility="collapsed")
+                st.caption(f"Totale listino attuale: € {totale_pieno_reale:.2f}")
+                # Ora lo sconto si applica direttamente su ciò che il cliente compra
+                riduzione_applicata = st.number_input("Riduzione (€):", min_value=0.0, max_value=totale_pieno_reale, step=10.0, label_visibility="collapsed")
 
-        # LOGICA DI CALCOLO
-        # 1. Calcolo del prezzo pieno (senza sconti) per le sedute accettate
-        totale_pieno_riga = prezzo_singolo_base * n_accettate
-        
-        # 2. Calcolo del prezzo unitario scontato
-        totale_proposta_netto = (prezzo_singolo_base * n_proposte) - riduzione_applicata
-        prezzo_unitario_finale = totale_proposta_netto / n_proposte if n_proposte > 0 else 0
-        
-        # 3. Calcolo del totale finale effettivo
-        totale_riga_finale = prezzo_unitario_finale * n_accettate
+        # LOGICA MATEMATICA CORRETTA
+        # 1. Totale Pieno = Prezzo x Sedute Scelte
+        # 2. Totale Finale = Totale Pieno - Sconto
+        totale_riga_finale = totale_pieno_reale - riduzione_applicata
 
         with col_totale:
             # Se c'è una riduzione, mostriamo il prezzo barrato piccolo e quello nuovo grande
             if riduzione_applicata > 0:
-                st.markdown(f"<div style='text-align: right; color: gray; font-size: 14px; text-decoration: line-through;'>€ {totale_pieno_riga:.2f}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: right; color: gray; font-size: 14px; text-decoration: line-through;'>€ {totale_pieno_reale:.2f}</div>", unsafe_allow_html=True)
             
             # Totale Grande
             st.markdown(f"<div style='text-align: right; font-size: 28px; font-weight: bold; color: #31333F;'>€ {totale_riga_finale:.2f}</div>", unsafe_allow_html=True)
@@ -190,7 +186,7 @@ if scelta == "📝 NUOVA SCHEDA":
                     "Trattamento": nome_display,
                     "Sedute": n_accettate,
                     "Totale": totale_riga_finale,      # Prezzo Scontato
-                    "PrezzoPieno": totale_pieno_riga,  # Prezzo Listino Originale
+                    "PrezzoPieno": totale_pieno_reale, # Prezzo Listino Originale
                     "Dettaglio": f"{txt_dettaglio} - € {totale_riga_finale:.2f}"
                 }
                 st.session_state.carrello.append(item)
