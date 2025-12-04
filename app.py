@@ -2,8 +2,8 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-# --- CONFIGURAZIONE APP v2.0 ---
-st.set_page_config(page_title="Studio Manager v2.0", layout="centered")
+# --- CONFIGURAZIONE APP v1.0 ---
+st.set_page_config(page_title="Studio Manager v1.0", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -45,7 +45,7 @@ TRATTAMENTI_STANDARD = {
 }
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v2.0")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.0")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
@@ -83,13 +83,15 @@ if scelta == "📝 NUOVA SCHEDA":
                 st.metric(label="Prezzo Singolo", value=f"€ {valore_listino}")
                 prezzo_singolo = valore_listino
         else:
+            # MODIFICA: Scrittura Libera con PREZZO GRANDE
             c1, c2 = st.columns([2, 1])
             with c1:
                 trattamento_scelto = st.text_input("Trattamento (Libero):", placeholder="Es. Protocollo Sposa")
             with c2:
                 valore_manuale = st.number_input("Prezzo 1 Seduta:", value=0.0, step=10.0, min_value=0.0)
+                # Qui mostriamo il numero grande anche se è manuale
                 if valore_manuale > 0:
-                    st.caption(f"€ {valore_manuale}")
+                    st.metric(label="Prezzo Impostato", value=f"€ {valore_manuale}")
                 prezzo_singolo = valore_manuale
 
         st.write("") 
@@ -115,15 +117,20 @@ if scelta == "📝 NUOVA SCHEDA":
 
         # Tasto per aggiungere al carrello
         if st.button("➕ AGGIUNGI AL PREVENTIVO"):
-            totale_riga = prezzo_singolo * n_vendute
-            item = {
-                "Trattamento": trattamento_scelto,
-                "Sedute": n_vendute,
-                "Totale": totale_riga,
-                "Dettaglio": f"{n_vendute}x {trattamento_scelto} (€{totale_riga:.0f})"
-            }
-            st.session_state.carrello.append(item)
-            st.rerun()
+            # Controllo che ci sia un nome trattamento e un prezzo
+            if prezzo_singolo > 0:
+                nome_display = trattamento_scelto if trattamento_scelto else "Trattamento Personalizzato"
+                totale_riga = prezzo_singolo * n_vendute
+                item = {
+                    "Trattamento": nome_display,
+                    "Sedute": n_vendute,
+                    "Totale": totale_riga,
+                    "Dettaglio": f"{n_vendute}x {nome_display} (€{totale_riga:.0f})"
+                }
+                st.session_state.carrello.append(item)
+                st.rerun()
+            else:
+                st.error("Inserisci un prezzo valido!")
 
     # --- VISUALIZZAZIONE CARRELLO ---
     st.markdown("##### 📦 Riepilogo Pacchetti Inseriti")
