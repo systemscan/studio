@@ -2,8 +2,8 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-# --- CONFIGURAZIONE ---
-st.set_page_config(page_title="Studio Manager", layout="centered")
+# --- CONFIGURAZIONE APP v2.0 ---
+st.set_page_config(page_title="Studio Manager v2.0", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -26,9 +26,13 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- MEMORIA DATI ---
+# --- MEMORIA DATI E CARRELLO ---
 if "pazienti" not in st.session_state:
     st.session_state.pazienti = []
+
+# Qui salviamo i pacchetti temporanei per il paziente corrente
+if "carrello" not in st.session_state:
+    st.session_state.carrello = []
 
 # --- LISTINO PREDEFINITO ---
 TRATTAMENTI_STANDARD = {
@@ -41,7 +45,7 @@ TRATTAMENTI_STANDARD = {
 }
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico")
+st.markdown("### 🏥 Studio Medico & Estetico - v2.0")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
@@ -60,59 +64,87 @@ if scelta == "📝 NUOVA SCHEDA":
 
     st.markdown("---")
 
-    # --- STEP 2: PROTOCOLLO ---
-    st.markdown("#### 2. Configurazione Protocollo")
-    
-    modo_inserimento = st.radio("Modalità Inserimento:", ["Da Listino", "Scrittura Libera"], horizontal=True)
-    
-    if modo_inserimento == "Da Listino":
-        # MODIFICA: Ora usiamo due colonne anche qui per mostrare il prezzo
-        col_list1, col_list2 = st.columns([2, 1])
-        with col_list1:
-            trattamento_scelto = st.selectbox("Seleziona Trattamento:", list(TRATTAMENTI_STANDARD.keys()))
-        with col_list2:
-            # Recuperiamo il prezzo dal dizionario
-            valore_listino = TRATTAMENTI_STANDARD[trattamento_scelto]
-            # Lo mostriamo ben visibile (ma non modificabile per errore)
-            st.metric(label="Prezzo Singolo (€)", value=valore_listino)
-            prezzo_singolo = valore_listino
-    else:
-        # Modalità Manuale
-        col_man1, col_man2 = st.columns([2, 1])
-        with col_man1:
-            trattamento_scelto = st.text_input("Nome Trattamento (Libero):", placeholder="Es. Protocollo Sposa")
-        with col_man2:
-            # Blocchiamo i negativi
-            prezzo_singolo = st.number_input("Prezzo 1 Seduta (€):", value=0.0, step=10.0, min_value=0.0)
+    # --- STEP 2: AGGIUNGI TRATTAMENTI (LOOP) ---
+    st.markdown("#### 2. Costruzione Preventivo")
+    st.info("Configura un pacchetto e premi 'Aggiungi' per inserirlo nel preventivo.")
 
-    # Definizione Sedute
-    st.write("") 
-    col_a, col_b = st.columns(2)
-    with col_a:
-        n_ideali = st.number_input("Sedute IDEALI (Protocollo):", value=8, min_value=1)
-    with col_b:
-        n_vendute = st.number_input("Sedute PROPOSTE:", value=6, min_value=1)
+    # Box Grigio per l'inserimento
+    with st.container(border=True):
+        modo_inserimento = st.radio("Sorgente:", ["Da Listino", "Scrittura Libera"], horizontal=True)
+        
+        prezzo_singolo = 0.0
 
-    # Calcolo efficacia
-    if n_ideali > 0:
-        efficacia = min(int((n_vendute / n_ideali) * 100), 100)
-    else:
-        efficacia = 0
+        if modo_inserimento == "Da Listino":
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                trattamento_scelto = st.selectbox("Trattamento:", list(TRATTAMENTI_STANDARD.keys()))
+            with c2:
+                valore_listino = TRATTAMENTI_STANDARD[trattamento_scelto]
+                st.metric(label="Prezzo Singolo", value=f"€ {valore_listino}")
+                prezzo_singolo = valore_listino
+        else:
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                trattamento_scelto = st.text_input("Trattamento (Libero):", placeholder="Es. Protocollo Sposa")
+            with c2:
+                valore_manuale = st.number_input("Prezzo 1 Seduta:", value=0.0, step=10.0, min_value=0.0)
+                if valore_manuale > 0:
+                    st.caption(f"€ {valore_manuale}")
+                prezzo_singolo = valore_manuale
+
+        st.write("") 
+        col_a, col_b = st.columns(2)
+        with col_a:
+            n_ideali = st.number_input("Sedute IDEALI:", value=8, min_value=1, key="ideal")
+        with col_b:
+            n_vendute = st.number_input("Sedute PROPOSTE:", value=6, min_value=1, key="real")
+
+        # Barra efficacia del singolo pacchetto
+        if n_ideali > 0:
+            efficacia = min(int((n_vendute / n_ideali) * 100), 100)
+        else:
+            efficacia = 0
+        
+        st.progress(efficacia)
+        if efficacia < 50:
+            st.caption(f"🔴 Copertura: {efficacia}% (Insufficiente)")
+        elif efficacia < 100:
+            st.caption(f"🟠 Copertura: {efficacia}% (Parziale)")
+        else:
+            st.caption(f"🟢 Copertura: {efficacia}% (Top)")
+
+        # Tasto per aggiungere al carrello
+        if st.button("➕ AGGIUNGI AL PREVENTIVO"):
+            totale_riga = prezzo_singolo * n_vendute
+            item = {
+                "Trattamento": trattamento_scelto,
+                "Sedute": n_vendute,
+                "Totale": totale_riga,
+                "Dettaglio": f"{n_vendute}x {trattamento_scelto} (€{totale_riga:.0f})"
+            }
+            st.session_state.carrello.append(item)
+            st.rerun()
+
+    # --- VISUALIZZAZIONE CARRELLO ---
+    st.markdown("##### 📦 Riepilogo Pacchetti Inseriti")
     
-    st.progress(efficacia)
-    if efficacia < 50:
-        st.error(f"🔴 Copertura Protocollo: {efficacia}% - Efficacia Insufficiente")
-    elif efficacia < 100:
-        st.warning(f"🟠 Copertura Protocollo: {efficacia}% - Risultato Parziale")
+    totale_preventivo = 0.0
+    
+    if len(st.session_state.carrello) > 0:
+        for i, item in enumerate(st.session_state.carrello):
+            st.text(f"{i+1}. {item['Dettaglio']}")
+            totale_preventivo += item['Totale']
+        
+        if st.button("🗑️ Svuota tutto e ricomincia"):
+            st.session_state.carrello = []
+            st.rerun()
     else:
-        st.success(f"🟢 Copertura Protocollo: {efficacia}% - Risultato Massimizzato")
+        st.caption("Nessun trattamento ancora aggiunto.")
 
     st.markdown("---")
 
-    # --- STEP 3: PROPOSTA ---
-    st.markdown("#### 3. Proposta")
-    
-    prezzo_totale = prezzo_singolo * n_vendute
+    # --- STEP 3: TOTALE E CHIUSURA ---
+    st.markdown("#### 3. Proposta Finale")
     
     # Sconto
     with st.expander("⚙️ Opzioni Amministrative (Clicca per modificare)"):
@@ -121,16 +153,16 @@ if scelta == "📝 NUOVA SCHEDA":
                                      value=0.0, 
                                      step=10.0, 
                                      min_value=0.0, 
-                                     max_value=float(prezzo_totale))
+                                     max_value=float(totale_preventivo) if totale_preventivo > 0 else 0.0)
 
-    prezzo_finale = prezzo_totale - sconto_euro
+    prezzo_finale = totale_preventivo - sconto_euro
 
     # Visualizzazione Prezzi
     if sconto_euro > 0:
-        st.caption("Prezzo Listino:")
-        st.markdown(f"#### <strike style='color:red'>€ {prezzo_totale:.2f}</strike>", unsafe_allow_html=True)
+        st.caption("Totale Listino:")
+        st.markdown(f"#### <strike style='color:red'>€ {totale_preventivo:.2f}</strike>", unsafe_allow_html=True)
     
-    st.caption("Totale Pacchetto:")
+    st.caption("Totale da Pagare:")
     st.markdown(f"## € {prezzo_finale:.2f}")
 
     # LOGICA ACCONTO
@@ -150,8 +182,6 @@ if scelta == "📝 NUOVA SCHEDA":
         with col_acc2:
             if acconto > 0:
                 st.metric(label="DA SALDARE (Futuro)", value=f"€ {saldo:.2f}")
-            else:
-                st.info("Inserisci acconto per confermare lo sconto.")
 
         if acconto > 0:
             st.success(f"✅ OFFERTA BLOCCATA! Versa Oggi € {acconto}")
@@ -160,35 +190,49 @@ if scelta == "📝 NUOVA SCHEDA":
 
     # --- SALVATAGGIO ---
     if st.button("💾 REGISTRA E COPIA PER RECEPTION", type="primary"):
-        if nome_paziente:
+        if nome_paziente and len(st.session_state.carrello) > 0:
             
+            # Creiamo la lista dei pacchetti per il messaggio
+            lista_pacchetti_str = ""
+            for item in st.session_state.carrello:
+                lista_pacchetti_str += f"- {item['Dettaglio']}\n"
+
             if acconto > 0:
                 dettaglio_pagamento = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
             else:
-                dettaglio_pagamento = f"💰 TOTALE: € {prezzo_finale:.2f} (Pagamento Standard)"
+                dettaglio_pagamento = f"💰 TOTALE: € {prezzo_finale:.2f}"
 
             record = {
                 "Ora": datetime.datetime.now().strftime("%H:%M"),
                 "Paziente": nome_paziente,
                 "Fatto Oggi": trattamento_oggi,
-                "Pacchetto": f"{n_vendute}x {trattamento_scelto}",
+                "Pacchetto": "Multiplo (vedi dettaglio)",
                 "Totale": f"€ {prezzo_finale:.2f}",
                 "Acconto": f"€ {acconto:.2f}"
             }
             st.session_state.pazienti.append(record)
+            
+            # Reset del carrello dopo il salvataggio
+            st.session_state.carrello = []
+            
             st.toast("Salvato!", icon="✅")
             
             msg = f"""*PAZIENTE:* {nome_paziente}
 *OGGI:* {trattamento_oggi}
-*PACCHETTO:* {n_vendute}x {trattamento_scelto}
 ----------------
-*PREZZO TOTALE:* € {prezzo_finale:.2f}
+*PREVENTIVO:*
+{lista_pacchetti_str}
+----------------
+*TOTALE FINALE:* € {prezzo_finale:.2f}
 {dettaglio_pagamento}"""
             
             st.code(msg, language="markdown")
             st.caption("👆 Tieni premuto, COPIA e manda su WhatsApp.")
         else:
-            st.error("Inserisci il nome del paziente!")
+            if len(st.session_state.carrello) == 0:
+                st.error("Inserisci almeno un pacchetto prima di salvare!")
+            else:
+                st.error("Inserisci il nome del paziente!")
 
 # ==========================================
 # SEZIONE 2: ARCHIVIO
