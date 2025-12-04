@@ -2,8 +2,8 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-# --- CONFIGURAZIONE UFFICIALE v1.3 ---
-st.set_page_config(page_title="Studio Manager v1.3", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.4 ---
+st.set_page_config(page_title="Studio Manager v1.4", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -33,7 +33,7 @@ if "pazienti" not in st.session_state:
 if "carrello" not in st.session_state:
     st.session_state.carrello = []
 
-# --- LISTINO v1.3 ---
+# --- LISTINO v1.4 ---
 TRATTAMENTI_STANDARD = {
     "Vacuum Therapy (20 min)": 80.0,
     "Vacuum Therapy (50 min)": 120.0,
@@ -51,7 +51,6 @@ TRATTAMENTI_STANDARD = {
 
 # --- FUNZIONE GRAFICA: BARRA EMOZIONALE ---
 def crea_barra_emozionale(percentuale):
-    """Crea una barra di progresso colorata e accattivante"""
     if percentuale < 50:
         colore = "#ff2b2b" # Rosso
         msg = "⚠️ RISULTATO INSUFFICIENTE"
@@ -75,13 +74,10 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.3")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.4")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
-# ==========================================
-# SEZIONE 1: VENDITA
-# ==========================================
 if scelta == "📝 NUOVA SCHEDA":
 
     # --- STEP 1: ANAGRAFICA ---
@@ -96,7 +92,7 @@ if scelta == "📝 NUOVA SCHEDA":
 
     # --- STEP 2: COSTRUZIONE PACCHETTO ---
     st.markdown("#### 2. Costruzione Pacchetto")
-    st.info("Configura il pacchetto, applica lo sconto e poi conferma le sedute.")
+    st.info("Configura il pacchetto (lo sconto è nascosto nell'ingranaggio).")
 
     with st.container(border=True):
         
@@ -132,49 +128,42 @@ if scelta == "📝 NUOVA SCHEDA":
         with col_proposte:
             n_proposte = st.number_input("Sedute che PROPONI:", value=8, min_value=1)
 
-        st.divider()
-
-        # B. PREZZO E SCONTO (Spostato PRIMA della conferma finale)
-        st.caption("B. DEFINIZIONE PREZZO")
-        
+        # B. PREZZO E SCONTO (STEALTH MODE)
         # Calcoliamo il totale della proposta iniziale
         totale_proposta_listino = prezzo_singolo_base * n_proposte
         
-        # Opzione per scontare subito il pacchetto
-        usa_sconto_item = st.checkbox("Applica Sconto a questo pacchetto")
-        prezzo_effettivo_seduta = prezzo_singolo_base
+        # Sconto Nascosto
+        sconto_applicato = 0.0
+        with st.expander("⚙️ Opzioni (Sconto)"): # Qui è nascosto
+            st.caption(f"Totale listino per {n_proposte} sedute: € {totale_proposta_listino:.2f}")
+            sconto_applicato = st.number_input("Sconto Extra (€):", min_value=0.0, max_value=totale_proposta_listino, step=10.0)
+        
+        # Calcolo del prezzo seduta effettivo (scontato o no)
+        totale_dopo_sconto = totale_proposta_listino - sconto_applicato
+        prezzo_effettivo_seduta = totale_dopo_sconto / n_proposte if n_proposte > 0 else 0
 
-        if usa_sconto_item:
-            col_sc1, col_sc2 = st.columns([1.5, 1])
-            with col_sc1:
-                st.write(f"Totale per {n_proposte} sedute: **€ {totale_proposta_listino:.2f}**")
-                sconto_euro_item = st.number_input("Sconto Totale (€):", min_value=0.0, max_value=totale_proposta_listino, step=10.0)
-            with col_sc2:
-                if sconto_euro_item > 0:
-                    nuovo_totale = totale_proposta_listino - sconto_euro_item
-                    # Ricalcoliamo il prezzo a seduta scontato
-                    prezzo_effettivo_seduta = nuovo_totale / n_proposte
-                    st.metric(label="Nuovo Prezzo Seduta", value=f"€ {prezzo_effettivo_seduta:.2f}")
-                else:
-                    st.metric(label="Prezzo Seduta", value=f"€ {prezzo_singolo_base:.2f}")
+        # Mostra prezzo solo se scontato, altrimenti mostra quello base
+        if sconto_applicato > 0:
+            st.write(f"Prezzo Listino: <strike style='color:red'>€ {totale_proposta_listino:.2f}</strike>", unsafe_allow_html=True)
+            st.write(f"**Prezzo Scontato: € {totale_dopo_sconto:.2f}**")
         
         st.divider()
 
         # C. COSA ACQUISTA (BARRA E CONFERMA)
-        st.markdown("##### C. CONFERMA PAZIENTE")
-        st.caption("In base al prezzo concordato sopra, quante ne facciamo?")
+        st.markdown("##### B. CONFERMA PAZIENTE")
+        st.caption("Quante ne confermiamo a questo prezzo?")
 
         col_acc, col_tot = st.columns([1, 1])
         with col_acc:
             n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=n_proposte, min_value=1)
         
-        # Calcolo Totale Riga (usando il prezzo eventualmente scontato)
+        # Calcolo Totale Riga Finale (Prezzo effettivo x Numero accettato)
         totale_riga_finale = prezzo_effettivo_seduta * n_accettate
 
         with col_tot:
             st.metric(label="Totale Pacchetto", value=f"€ {totale_riga_finale:.2f}")
 
-        # BARRA EMOZIONALE (Ora è alla fine)
+        # BARRA EMOZIONALE
         if n_ideali > 0:
             efficacia = min(int((n_accettate / n_ideali) * 100), 100)
         else:
@@ -188,10 +177,9 @@ if scelta == "📝 NUOVA SCHEDA":
             if prezzo_singolo_base > 0:
                 nome_display = trattamento_scelto if trattamento_scelto else "Trattamento Personalizzato"
                 
-                # Creiamo la stringa dettaglio con info sconto se c'è
                 txt_dettaglio = f"{n_accettate}x {nome_display}"
-                if usa_sconto_item and sconto_euro_item > 0:
-                    txt_dettaglio += " (Scontato)"
+                if sconto_applicato > 0:
+                    txt_dettaglio += " (Promo)"
 
                 item = {
                     "Trattamento": nome_display,
@@ -223,18 +211,33 @@ if scelta == "📝 NUOVA SCHEDA":
     # --- STEP 3: CASSA FINALE ---
     st.markdown("#### 3. Cassa Finale")
     
-    st.markdown(f"### Totale da Pagare: € {totale_preventivo:.2f}")
+    # Sconto Finale Nascosto
+    sconto_finale = 0.0
+    with st.expander("⚙️ Sconto Cassa (Opzionale)"):
+        st.caption("Sconto ulteriore sul totale complessivo.")
+        sconto_finale = st.number_input("Sconto Cassa (€):", min_value=0.0, max_value=totale_preventivo, step=10.0)
+
+    prezzo_finale_cassa = totale_preventivo - sconto_finale
+
+    if sconto_finale > 0:
+        st.caption("Totale:")
+        st.markdown(f"#### <strike style='color:red'>€ {totale_preventivo:.2f}</strike>", unsafe_allow_html=True)
+        st.markdown(f"## € {prezzo_finale_cassa:.2f}")
+    else:
+        st.markdown(f"### Totale da Pagare: € {prezzo_finale_cassa:.2f}")
 
     # ACCONTO
     acconto = 0.0
-    saldo = totale_preventivo
+    saldo = prezzo_finale_cassa
     
+    # L'acconto appare SOLO se c'è uno sconto (o se lo apri manualmente)
+    # Ma per sicurezza lo lasciamo visibile per chiudere la vendita
     st.markdown("##### 🔒 Acconto / Blocca Prezzo")
     col_acc1, col_acc2 = st.columns(2)
     with col_acc1:
-        acconto = st.number_input("Versa Oggi (€):", min_value=0.0, max_value=totale_preventivo if totale_preventivo > 0 else 0.0, step=10.0)
+        acconto = st.number_input("Versa Oggi (€):", min_value=0.0, max_value=prezzo_finale_cassa if prezzo_finale_cassa > 0 else 0.0, step=10.0)
     
-    saldo = totale_preventivo - acconto
+    saldo = prezzo_finale_cassa - acconto
     with col_acc2:
          if acconto > 0:
              st.metric("DA SALDARE", f"€ {saldo:.2f}")
@@ -253,13 +256,13 @@ if scelta == "📝 NUOVA SCHEDA":
             if acconto > 0:
                 dett = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
             else:
-                dett = f"💰 TOTALE: € {totale_preventivo:.2f}"
+                dett = f"💰 TOTALE: € {prezzo_finale_cassa:.2f}"
 
             st.session_state.pazienti.append({
                 "Ora": datetime.datetime.now().strftime("%H:%M"),
                 "Paziente": nome_paziente,
                 "Fatto Oggi": trattamento_oggi,
-                "Totale": f"€ {totale_preventivo:.2f}",
+                "Totale": f"€ {prezzo_finale_cassa:.2f}",
                 "Acconto": f"€ {acconto:.2f}"
             })
             st.toast("Salvato!")
@@ -270,7 +273,7 @@ if scelta == "📝 NUOVA SCHEDA":
 *ACQUISTA:*
 {lista_str}
 ----------------
-*TOTALE:* € {totale_preventivo:.2f}
+*TOTALE:* € {prezzo_finale_cassa:.2f}
 {dett}"""
             st.code(msg, language="markdown")
             st.caption("👆 Copia e invia su WhatsApp")
