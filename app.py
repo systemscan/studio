@@ -1,9 +1,10 @@
 import streamlit as st
 import datetime
 import pandas as pd
+import urllib.parse # Serve per creare il link WhatsApp
 
-# --- CONFIGURAZIONE UFFICIALE v1.1 ---
-st.set_page_config(page_title="Studio Manager v1.1", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.2 ---
+st.set_page_config(page_title="Studio Manager v1.2", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -26,29 +27,27 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- GESTIONE RESET SICURO (FIX ERRORE STREAMLIT) ---
-# Questa sezione pulisce i campi PRIMA che vengano disegnati
-# evitando l'errore StreamlitAPIException.
-
+# --- GESTIONE RESET SICURO ---
 if "reset_pacchetto" in st.session_state and st.session_state.reset_pacchetto:
-    # Resetta i campi del pacchetto
+    # Resetta campi pacchetto
     if "input_tratt_libero" in st.session_state: st.session_state.input_tratt_libero = ""
     if "input_prezzo_libero" in st.session_state: st.session_state.input_prezzo_libero = 0.0
     if "input_freq" in st.session_state: st.session_state.input_freq = ""
     if "input_riduzione" in st.session_state: st.session_state.input_riduzione = 0.0
+    # Resetta campi omaggio
+    if "input_omaggio_nome" in st.session_state: st.session_state.input_omaggio_nome = ""
+    if "input_omaggio_sedute" in st.session_state: st.session_state.input_omaggio_sedute = 1
+    
     # Reimposta numeri default
     if "num_ideali" in st.session_state: st.session_state.num_ideali = 10
     if "num_proposte" in st.session_state: st.session_state.num_proposte = 8
     if "num_accettate" in st.session_state: st.session_state.num_accettate = 8
-    # Spegni il trigger
     st.session_state.reset_pacchetto = False
 
 if "reset_paziente" in st.session_state and st.session_state.reset_paziente:
-    # Resetta i campi paziente
     if "input_nome" in st.session_state: st.session_state.input_nome = ""
     if "input_oggi" in st.session_state: st.session_state.input_oggi = ""
     if "input_acconto" in st.session_state: st.session_state.input_acconto = 0.0
-    # Spegni il trigger
     st.session_state.reset_paziente = False
 
 # --- MEMORIA DATI ---
@@ -61,7 +60,7 @@ if "carrello" not in st.session_state:
 if "msg_finale" not in st.session_state:
     st.session_state.msg_finale = None
 
-# --- LISTINO v1.1 ---
+# --- LISTINO v1.2 ---
 TRATTAMENTI_STANDARD = {
     "Vacuum Therapy (20 min)": 80.0,
     "Vacuum Therapy (50 min)": 120.0,
@@ -102,9 +101,33 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.1")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.2")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
+
+if st.session_state.msg_finale:
+    st.success("✅ Registrato con successo!")
+    
+    # --- IL TASTO MAGICO WHATSAPP ---
+    # Codifichiamo il testo per renderlo un link cliccabile
+    testo_encoded = urllib.parse.quote(st.session_state.msg_finale)
+    link_wa = f"https://wa.me/?text={testo_encoded}"
+    
+    st.markdown(f"""
+    <a href="{link_wa}" target="_blank">
+        <button style="width: 100%; background-color: #25D366; color: white; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;">
+            ✈️ CLICCA QUI PER INVIARE SU WHATSAPP
+        </button>
+    </a>
+    """, unsafe_allow_html=True)
+    
+    st.caption("Oppure copia il testo qui sotto manualmente:")
+    st.code(st.session_state.msg_finale, language="markdown")
+    
+    if st.button("Chiudi e Nuovo Paziente"):
+        st.session_state.msg_finale = None
+        st.rerun()
+    st.divider()
 
 if scelta == "📝 NUOVA SCHEDA":
 
@@ -148,14 +171,12 @@ if scelta == "📝 NUOVA SCHEDA":
         # B. PROTOCOLLO
         st.write("")
         st.caption("B. PROTOCOLLO")
-        
         col_ideali, col_proposte = st.columns(2)
         with col_ideali:
             n_ideali = st.number_input("Sedute IDEALI:", value=10, min_value=1, key="num_ideali")
         with col_proposte:
             n_proposte = st.number_input("Sedute PROPOSTE:", value=8, min_value=1, key="num_proposte")
 
-        # Frequenza spostata QUI SOTTO come richiesto
         frequenza_sedute = st.text_input("Frequenza Sedute:", placeholder="Es. 1 a settimana", key="input_freq")
 
         st.divider()
@@ -168,14 +189,23 @@ if scelta == "📝 NUOVA SCHEDA":
         with col_conferma:
             n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=n_proposte, min_value=1, key="num_accettate")
             
-            # Calcolo Pieno
             totale_pieno_reale = prezzo_singolo_base * n_accettate
             
-            # Opzione Segreta
+            # OPZIONI (RIDUZIONE + OMAGGIO)
             riduzione_applicata = 0.0
-            with st.expander("⚙️ Opzioni"):
+            omaggio_nome = ""
+            omaggio_sedute = 1
+            
+            with st.expander("⚙️ Opzioni (Sconti & Omaggi)"):
+                # Parte Sconto
                 st.caption(f"Totale listino attuale: € {totale_pieno_reale:.2f}")
                 riduzione_applicata = st.number_input("Riduzione (€):", min_value=0.0, max_value=totale_pieno_reale, step=10.0, label_visibility="collapsed", key="input_riduzione")
+                
+                # Parte Omaggio (Nuova)
+                st.divider()
+                st.caption("🎁 Inserisci Trattamento Omaggio")
+                omaggio_nome = st.text_input("Nome Omaggio:", placeholder="Es. Pressoterapia", key="input_omaggio_nome")
+                omaggio_sedute = st.number_input("N° Sedute Omaggio:", min_value=1, value=1, key="input_omaggio_sedute")
 
         # Calcolo Finale
         totale_riga_finale = totale_pieno_reale - riduzione_applicata
@@ -210,6 +240,10 @@ if scelta == "📝 NUOVA SCHEDA":
                 
                 if note_extra:
                     txt_dettaglio += f" ({', '.join(note_extra)})"
+                
+                # Aggiunta Omaggio al testo
+                if omaggio_nome:
+                    txt_dettaglio += f"\n   + 🎁 OMAGGIO: {omaggio_sedute}x {omaggio_nome}"
 
                 item = {
                     "Trattamento": nome_display,
@@ -221,7 +255,7 @@ if scelta == "📝 NUOVA SCHEDA":
                 }
                 st.session_state.carrello.append(item)
                 
-                # Attiva il trigger di pulizia per il prossimo reload
+                # Trigger Reset
                 st.session_state.reset_pacchetto = True
                 st.rerun()
             else:
@@ -285,10 +319,8 @@ if scelta == "📝 NUOVA SCHEDA":
         
         if nome_paziente and len(st.session_state.carrello) > 0:
             
-            # BLOCCO: Se c'è sconto ma acconto è 0 -> ERRORE
             if ha_sconto and acconto <= 0:
-                st.error("⛔ ERRORE: Hai applicato uno sconto ma non hai inserito un Acconto! Inserisci un acconto per procedere.")
-                st.session_state.msg_finale = None 
+                st.error("⛔ ERRORE: Sconto applicato ma nessun acconto inserito.")
             else:
                 lista_str = ""
                 for item in st.session_state.carrello:
@@ -320,23 +352,15 @@ if scelta == "📝 NUOVA SCHEDA":
 {blocco_totali}
 {dett}"""
                 
-                # Resetta tutto e attiva trigger paziente
+                # SALVA E PULISCI
                 st.session_state.carrello = []
                 st.session_state.msg_finale = msg
-                st.session_state.reset_paziente = True # Attiva pulizia al prossimo giro
-                st.session_state.reset_pacchetto = True # Pulisci anche i pacchetti parziali
+                st.session_state.reset_paziente = True
+                st.session_state.reset_pacchetto = True
                 
                 st.rerun()
         else:
             st.error("Dati mancanti! Inserisci nome e almeno un pacchetto.")
-
-    # MOSTRA MESSAGGIO SE PRESENTE
-    if st.session_state.msg_finale:
-        st.success("✅ Registrato! Copia il messaggio qui sotto:")
-        st.code(st.session_state.msg_finale, language="markdown")
-        if st.button("Chiudi Messaggio"):
-            st.session_state.msg_finale = None
-            st.rerun()
 
 elif scelta == "📂 ARCHIVIO GIORNALIERO":
     st.markdown("#### Storico di oggi")
