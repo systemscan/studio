@@ -2,8 +2,8 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-# --- CONFIGURAZIONE UFFICIALE v1.6 ---
-st.set_page_config(page_title="Studio Manager v1.6", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.7 ---
+st.set_page_config(page_title="Studio Manager v1.7", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -26,18 +26,18 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- MEMORIA DATI E CARRELLO ---
+# --- MEMORIA DATI ---
 if "pazienti" not in st.session_state:
     st.session_state.pazienti = []
 
 if "carrello" not in st.session_state:
     st.session_state.carrello = []
 
-# Variabile per mostrare il messaggio dopo il reset
-if "ultimo_messaggio" not in st.session_state:
-    st.session_state.ultimo_messaggio = None
+# Variabile per mostrare il messaggio DOPO il reset
+if "msg_finale" not in st.session_state:
+    st.session_state.msg_finale = None
 
-# --- LISTINO v1.6 ---
+# --- LISTINO v1.7 ---
 TRATTAMENTI_STANDARD = {
     "Vacuum Therapy (20 min)": 80.0,
     "Vacuum Therapy (50 min)": 120.0,
@@ -78,18 +78,9 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.6")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.7")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
-
-if st.session_state.ultimo_messaggio:
-    st.success("✅ Paziente registrato e campi puliti!")
-    st.code(st.session_state.ultimo_messaggio, language="markdown")
-    st.caption("👆 COPIA SUBITO: Questo messaggio sparirà al prossimo click.")
-    if st.button("Chiudi Messaggio"):
-        st.session_state.ultimo_messaggio = None
-        st.rerun()
-    st.divider()
 
 if scelta == "📝 NUOVA SCHEDA":
 
@@ -97,10 +88,11 @@ if scelta == "📝 NUOVA SCHEDA":
     st.markdown("#### 1. Anagrafica Paziente")
     col1, col2 = st.columns(2)
     with col1:
-        # Aggiungo KEY per poterli resettare
+        # Chiave per reset
         nome_paziente = st.text_input("Nome e Cognome", key="input_nome")
     with col2:
-        trattamento_oggi = st.text_input("Trattamento fatto OGGI", placeholder="Es. Igiene", key="input_trattamento_oggi")
+        # Chiave per reset
+        trattamento_oggi = st.text_input("Trattamento fatto OGGI", placeholder="Es. Igiene", key="input_oggi")
 
     st.markdown("---")
 
@@ -116,7 +108,7 @@ if scelta == "📝 NUOVA SCHEDA":
         if modo_inserimento == "Da Listino":
             c1, c2 = st.columns([2, 1])
             with c1:
-                trattamento_scelto = st.selectbox("Trattamento:", list(TRATTAMENTI_STANDARD.keys()))
+                trattamento_scelto = st.selectbox("Trattamento:", list(TRATTAMENTI_STANDARD.keys()), key="sel_tratt")
             with c2:
                 valore_listino = TRATTAMENTI_STANDARD[trattamento_scelto]
                 st.metric(label="Prezzo Listino", value=f"€ {valore_listino}")
@@ -124,25 +116,27 @@ if scelta == "📝 NUOVA SCHEDA":
         else:
             c1, c2 = st.columns([2, 1])
             with c1:
-                trattamento_scelto = st.text_input("Trattamento (Libero):", placeholder="Es. Trattamento Speciale")
+                # Chiave per reset
+                trattamento_scelto = st.text_input("Trattamento (Libero):", placeholder="Es. Trattamento Speciale", key="input_tratt_libero")
             with c2:
-                valore_manuale = st.number_input("Prezzo 1 Seduta:", value=0.0, step=10.0)
+                # Chiave per reset
+                valore_manuale = st.number_input("Prezzo 1 Seduta:", value=0.0, step=10.0, key="input_prezzo_libero")
                 if valore_manuale > 0:
                     st.metric(label="Prezzo Impostato", value=f"€ {valore_manuale}")
                 prezzo_singolo_base = valore_manuale
 
-        # B. PROTOCOLLO E FREQUENZA (NOVITÀ)
+        # B. PROTOCOLLO E FREQUENZA
         st.write("")
         st.caption("B. PROTOCOLLO E FREQUENZA")
         
-        # Frequenza aggiunta qui
-        frequenza_sedute = st.text_input("Frequenza Sedute:", placeholder="Es. 1 a settimana / Ogni 15 giorni")
+        # Chiave per reset
+        frequenza_sedute = st.text_input("Frequenza Sedute:", placeholder="Es. 1 a settimana", key="input_freq")
 
         col_ideali, col_proposte = st.columns(2)
         with col_ideali:
-            n_ideali = st.number_input("Sedute IDEALI:", value=10, min_value=1)
+            n_ideali = st.number_input("Sedute IDEALI:", value=10, min_value=1, key="num_ideali")
         with col_proposte:
-            n_proposte = st.number_input("Sedute PROPOSTE:", value=8, min_value=1)
+            n_proposte = st.number_input("Sedute PROPOSTE:", value=8, min_value=1, key="num_proposte")
 
         st.divider()
 
@@ -152,7 +146,7 @@ if scelta == "📝 NUOVA SCHEDA":
         col_conferma, col_totale = st.columns([1, 1])
         
         with col_conferma:
-            n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=n_proposte, min_value=1)
+            n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=n_proposte, min_value=1, key="num_accettate")
             
             # Calcolo Pieno
             totale_pieno_reale = prezzo_singolo_base * n_accettate
@@ -161,7 +155,8 @@ if scelta == "📝 NUOVA SCHEDA":
             riduzione_applicata = 0.0
             with st.expander("⚙️ Opzioni"):
                 st.caption(f"Totale listino attuale: € {totale_pieno_reale:.2f}")
-                riduzione_applicata = st.number_input("Riduzione (€):", min_value=0.0, max_value=totale_pieno_reale, step=10.0, label_visibility="collapsed")
+                # Chiave per reset
+                riduzione_applicata = st.number_input("Riduzione (€):", min_value=0.0, max_value=totale_pieno_reale, step=10.0, label_visibility="collapsed", key="input_riduzione")
 
         # Calcolo Finale
         totale_riga_finale = totale_pieno_reale - riduzione_applicata
@@ -187,12 +182,16 @@ if scelta == "📝 NUOVA SCHEDA":
                 nome_display = trattamento_scelto if trattamento_scelto else "Trattamento Personalizzato"
                 
                 txt_dettaglio = f"{n_accettate}x {nome_display}"
-                if riduzione_applicata > 0:
-                    txt_dettaglio += " (Promo)"
                 
-                # Aggiungiamo la frequenza al dettaglio se presente
+                # Aggiungiamo Frequenza e Promo al dettaglio
+                note_extra = []
                 if frequenza_sedute:
-                    txt_dettaglio += f" [{frequenza_sedute}]"
+                    note_extra.append(f"Freq: {frequenza_sedute}")
+                if riduzione_applicata > 0:
+                    note_extra.append("Promo")
+                
+                if note_extra:
+                    txt_dettaglio += f" ({', '.join(note_extra)})"
 
                 item = {
                     "Trattamento": nome_display,
@@ -203,23 +202,33 @@ if scelta == "📝 NUOVA SCHEDA":
                     "Dettaglio": f"{txt_dettaglio} - € {totale_riga_finale:.2f}"
                 }
                 st.session_state.carrello.append(item)
+                
+                # --- PULIZIA AUTOMATICA CAMPI PACCHETTO ---
+                st.session_state["input_tratt_libero"] = ""
+                st.session_state["input_prezzo_libero"] = 0.0
+                st.session_state["input_freq"] = ""
+                st.session_state["input_riduzione"] = 0.0
+                # Reimpostiamo i numeri sedute a valori default
+                st.session_state["num_ideali"] = 10
+                st.session_state["num_proposte"] = 8
+                st.session_state["num_accettate"] = 8
+                
                 st.rerun()
             else:
                 st.error("Prezzo non valido.")
 
-    # --- CARRELLO (CANCELLAZIONE SINGOLA) ---
+    # --- CARRELLO ---
     st.markdown("##### 📦 Carrello Attuale")
     totale_preventivo = 0.0
     totale_preventivo_pieno = 0.0
     
     if len(st.session_state.carrello) > 0:
-        # Loop con indice per permettere cancellazione
         for i, item in enumerate(st.session_state.carrello):
             c_text, c_del = st.columns([5, 1])
             with c_text:
                 st.text(f"{i+1}. {item['Dettaglio']}")
             with c_del:
-                # Tasto rosso per cancellare singola voce
+                # Tasto rosso cancellazione singola
                 if st.button("❌", key=f"del_{i}"):
                     st.session_state.carrello.pop(i)
                     st.rerun()
@@ -257,14 +266,13 @@ if scelta == "📝 NUOVA SCHEDA":
              st.metric("DA SALDARE", f"€ {saldo:.2f}")
              st.success("✅ BLOCCATO")
          elif totale_preventivo < totale_preventivo_pieno:
-             # Se c'è sconto ma non acconto, mostriamo warning visivo (blocco logico nel bottone sotto)
              st.warning("⚠️ Per confermare lo sconto serve un acconto!")
 
     st.markdown("---")
 
     # --- SALVATAGGIO ---
     if st.button("💾 REGISTRA E COPIA PER RECEPTION", type="primary"):
-        # CONTROLLO BLOCCANTE SULLO SCONTO
+        # Logica Sconto/Acconto
         ha_sconto = totale_preventivo < totale_preventivo_pieno
         
         if nome_paziente and len(st.session_state.carrello) > 0:
@@ -272,13 +280,13 @@ if scelta == "📝 NUOVA SCHEDA":
             # BLOCCO: Se c'è sconto ma acconto è 0 -> ERRORE
             if ha_sconto and acconto <= 0:
                 st.error("⛔ ERRORE: Hai applicato uno sconto ma non hai inserito un Acconto! Inserisci un acconto per procedere.")
+                st.session_state.msg_finale = None # Pulisci eventuali vecchi messaggi
             else:
-                # PROCEDURA DI SUCCESSO
+                # CREAZIONE MESSAGGIO
                 lista_str = ""
                 for item in st.session_state.carrello:
                     lista_str += f"- {item['Dettaglio']}\n"
 
-                # Costruzione dei totali
                 if ha_sconto:
                     blocco_totali = f"*TOTALE LISTINO:* € {totale_preventivo_pieno:.2f}\n*TOTALE SCONTATO:* € {totale_preventivo:.2f}"
                 else:
@@ -289,14 +297,15 @@ if scelta == "📝 NUOVA SCHEDA":
                 else:
                     dett = "(Saldo completo o pagamento standard)"
 
-                # Salva in storico (opzionale)
+                # Salva nello storico
                 st.session_state.pazienti.append({
                     "Ora": datetime.datetime.now().strftime("%H:%M"),
                     "Paziente": nome_paziente,
-                    "Totale": f"€ {prezzo_finale_cassa:.2f}"
+                    "Totale": f"€ {prezzo_finale_cassa:.2f}",
+                    "Acconto": f"€ {acconto:.2f}"
                 })
                 
-                # CREA MESSAGGIO
+                # Messaggio Finale
                 msg = f"""*PAZIENTE:* {nome_paziente}
 *OGGI:* {trattamento_oggi}
 ----------------
@@ -306,19 +315,26 @@ if scelta == "📝 NUOVA SCHEDA":
 {blocco_totali}
 {dett}"""
                 
-                # RESETTA TUTTO
-                st.session_state.carrello = [] # Svuota carrello
-                st.session_state.ultimo_messaggio = msg # Salva messaggio per mostrarlo
+                # RESETTA TUTTO E SALVA IL MESSAGGIO DA MOSTRARE
+                st.session_state.carrello = []
+                st.session_state.msg_finale = msg
                 
-                # RESET INPUT FORZATO (Cambiando lo stato delle chiavi)
-                # Nota: Streamlit non resetta i widget input direttamente senza rerun, 
-                # quindi usiamo il rerun finale e le chiavi vuote.
-                # In Streamlit nativo non possiamo "pulire" i widget input text facilmente 
-                # se non ricaricando la pagina, ma salviamo il messaggio fuori.
+                # PULIZIA CAMPI PAZIENTE
+                st.session_state["input_nome"] = ""
+                st.session_state["input_oggi"] = ""
+                st.session_state["input_acconto"] = 0.0
                 
-                st.rerun() # Ricarica la pagina: i campi saranno vuoti (default) e mostreremo il messaggio in alto
+                st.rerun()
         else:
             st.error("Dati mancanti! Inserisci nome e almeno un pacchetto.")
+
+    # MOSTRA MESSAGGIO SE PRESENTE (SOTTO IL PULSANTE)
+    if st.session_state.msg_finale:
+        st.success("✅ Registrato! Copia il messaggio qui sotto:")
+        st.code(st.session_state.msg_finale, language="markdown")
+        if st.button("Chiudi Messaggio"):
+            st.session_state.msg_finale = None
+            st.rerun()
 
 elif scelta == "📂 ARCHIVIO GIORNALIERO":
     st.markdown("#### Storico di oggi")
