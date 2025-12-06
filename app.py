@@ -1,10 +1,10 @@
 import streamlit as st
 import datetime
 import pandas as pd
-import urllib.parse # Serve per creare il link WhatsApp
+import urllib.parse
 
-# --- CONFIGURAZIONE UFFICIALE v1.2 ---
-st.set_page_config(page_title="Studio Manager v1.2", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.3 ---
+st.set_page_config(page_title="Studio Manager v1.3", layout="centered")
 
 # --- PASSWORD ---
 password_segreta = "studio2024"
@@ -34,6 +34,7 @@ if "reset_pacchetto" in st.session_state and st.session_state.reset_pacchetto:
     if "input_prezzo_libero" in st.session_state: st.session_state.input_prezzo_libero = 0.0
     if "input_freq" in st.session_state: st.session_state.input_freq = ""
     if "input_riduzione" in st.session_state: st.session_state.input_riduzione = 0.0
+    
     # Resetta campi omaggio
     if "input_omaggio_nome" in st.session_state: st.session_state.input_omaggio_nome = ""
     if "input_omaggio_sedute" in st.session_state: st.session_state.input_omaggio_sedute = 1
@@ -60,7 +61,7 @@ if "carrello" not in st.session_state:
 if "msg_finale" not in st.session_state:
     st.session_state.msg_finale = None
 
-# --- LISTINO v1.2 ---
+# --- LISTINO v1.3 ---
 TRATTAMENTI_STANDARD = {
     "Vacuum Therapy (20 min)": 80.0,
     "Vacuum Therapy (50 min)": 120.0,
@@ -101,15 +102,14 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.2")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.3")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
 if st.session_state.msg_finale:
     st.success("✅ Registrato con successo!")
     
-    # --- IL TASTO MAGICO WHATSAPP ---
-    # Codifichiamo il testo per renderlo un link cliccabile
+    # --- TASTO WHATSAPP ---
     testo_encoded = urllib.parse.quote(st.session_state.msg_finale)
     link_wa = f"https://wa.me/?text={testo_encoded}"
     
@@ -196,16 +196,20 @@ if scelta == "📝 NUOVA SCHEDA":
             omaggio_nome = ""
             omaggio_sedute = 1
             
+            # --- MENU OPZIONI MODIFICATO ---
             with st.expander("⚙️ Opzioni (Sconti & Omaggi)"):
-                # Parte Sconto
-                st.caption(f"Totale listino attuale: € {totale_pieno_reale:.2f}")
-                riduzione_applicata = st.number_input("Riduzione (€):", min_value=0.0, max_value=totale_pieno_reale, step=10.0, label_visibility="collapsed", key="input_riduzione")
                 
-                # Parte Omaggio (Nuova)
-                st.divider()
-                st.caption("🎁 Inserisci Trattamento Omaggio")
-                omaggio_nome = st.text_input("Nome Omaggio:", placeholder="Es. Pressoterapia", key="input_omaggio_nome")
-                omaggio_sedute = st.number_input("N° Sedute Omaggio:", min_value=1, value=1, key="input_omaggio_sedute")
+                # SEZIONE 1: SCONTO
+                st.markdown("**💰 RIDUZIONE PREZZO**")
+                st.caption(f"Totale attuale: € {totale_pieno_reale:.2f}")
+                riduzione_applicata = st.number_input("Sconto in Euro (€):", min_value=0.0, max_value=totale_pieno_reale, step=10.0, key="input_riduzione")
+                
+                st.markdown("---")
+                
+                # SEZIONE 2: OMAGGIO (Ecco le caselle che non vedevi)
+                st.markdown("**🎁 AGGIUNGI OMAGGIO**")
+                omaggio_nome = st.text_input("Nome del Regalo:", placeholder="Es. Pressoterapia", key="input_omaggio_nome")
+                omaggio_sedute = st.number_input("Numero Sedute Regalo:", min_value=1, value=1, key="input_omaggio_sedute")
 
         # Calcolo Finale
         totale_riga_finale = totale_pieno_reale - riduzione_applicata
@@ -241,7 +245,7 @@ if scelta == "📝 NUOVA SCHEDA":
                 if note_extra:
                     txt_dettaglio += f" ({', '.join(note_extra)})"
                 
-                # Aggiunta Omaggio al testo
+                # LOGICA AGGIUNTA OMAGGIO NEL TESTO
                 if omaggio_nome:
                     txt_dettaglio += f"\n   + 🎁 OMAGGIO: {omaggio_sedute}x {omaggio_nome}"
 
