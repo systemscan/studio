@@ -3,22 +3,29 @@ import datetime
 import pandas as pd
 import urllib.parse
 
-# --- CONFIGURAZIONE UFFICIALE v1.4 (STABILE) ---
-st.set_page_config(page_title="Studio Manager v1.4", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.5 ---
+st.set_page_config(page_title="Studio Manager v1.5", layout="centered")
 
-# --- PASSWORD ---
+# --- PASSWORD PERSISTENTE ---
 password_segreta = "studio2024"
 
 def check_password():
-    if "password_correct" not in st.session_state:
-        st.session_state.password_correct = False
-    if st.session_state.password_correct:
+    # 1. Controlla se siamo già autenticati tramite URL (il "timbro")
+    if "auth" in st.query_params and st.query_params["auth"] == "true":
         return True
+        
+    # 2. Controlla la sessione corrente
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # 3. Mostra Login
     st.markdown("### 🔒 Accesso Riservato")
     pwd = st.text_input("Password:", type="password")
     if st.button("Entra"):
         if pwd == password_segreta:
             st.session_state.password_correct = True
+            # Inserisce il timbro nell'URL
+            st.query_params["auth"] = "true"
             st.rerun()
         else:
             st.error("Password errata")
@@ -27,21 +34,30 @@ def check_password():
 if not check_password():
     st.stop()
 
+# --- TASTO LOGOUT (Nel menu laterale per sicurezza) ---
+with st.sidebar:
+    st.write(f"Login attivo.")
+    if st.button("Esci (Logout)"):
+        st.query_params.clear() # Toglie il timbro
+        st.session_state.clear()
+        st.rerun()
+
 # --- GESTIONE RESET SICURO ---
-# Questa logica pulisce i campi all'inizio del ricaricamento pagina
 if "reset_pacchetto" in st.session_state and st.session_state.reset_pacchetto:
-    # Pulisci input testo/numeri pacchetto
+    # Resetta campi testo
     if "input_tratt_libero" in st.session_state: st.session_state.input_tratt_libero = ""
     if "input_prezzo_libero" in st.session_state: st.session_state.input_prezzo_libero = 0.0
     if "input_freq" in st.session_state: st.session_state.input_freq = ""
     if "input_riduzione" in st.session_state: st.session_state.input_riduzione = 0.0
+    
+    # Resetta campi omaggio
     if "input_omaggio_nome" in st.session_state: st.session_state.input_omaggio_nome = ""
     if "input_omaggio_sedute" in st.session_state: st.session_state.input_omaggio_sedute = 1
     
-    # Reimposta numeri sedute a 0 (Default pulito)
-    if "num_ideali" in st.session_state: st.session_state.num_ideali = 0
-    if "num_proposte" in st.session_state: st.session_state.num_proposte = 0
-    if "num_accettate" in st.session_state: st.session_state.num_accettate = 0
+    # Reimposta numeri default a 0 (Chiavi 'z_' per forzare lo zero)
+    if "z_ideali" in st.session_state: st.session_state.z_ideali = 0
+    if "z_proposte" in st.session_state: st.session_state.z_proposte = 0
+    if "z_accettate" in st.session_state: st.session_state.z_accettate = 0
     
     st.session_state.reset_pacchetto = False
 
@@ -61,7 +77,7 @@ if "carrello" not in st.session_state:
 if "msg_finale" not in st.session_state:
     st.session_state.msg_finale = None
 
-# --- LISTINO PREZZI ---
+# --- LISTINO v1.5 ---
 TRATTAMENTI_STANDARD = {
     "Vacuum Therapy (20 min)": 80.0,
     "Vacuum Therapy (50 min)": 120.0,
@@ -77,7 +93,7 @@ TRATTAMENTI_STANDARD = {
     "Pulizia Viso Profonda": 60.0
 }
 
-# --- FUNZIONE GRAFICA ---
+# --- FUNZIONE GRAFICA: BARRA EMOZIONALE ---
 def crea_barra_emozionale(percentuale):
     if percentuale < 50:
         colore = "#ff2b2b" # Rosso
@@ -102,11 +118,10 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.4")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.5")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
-# --- MOSTRA MESSAGGIO FINALE E TASTO WHATSAPP ---
 if st.session_state.msg_finale:
     st.success("✅ Registrato con successo!")
     
@@ -173,9 +188,11 @@ if scelta == "📝 NUOVA SCHEDA":
         st.caption("B. PROTOCOLLO")
         col_ideali, col_proposte = st.columns(2)
         with col_ideali:
-            n_ideali = st.number_input("Sedute IDEALI:", value=0, min_value=0, key="num_ideali")
+            # CHIAVI "z_" PER FORZARE LO ZERO
+            n_ideali = st.number_input("Sedute IDEALI:", value=0, min_value=0, key="z_ideali")
         with col_proposte:
-            n_proposte = st.number_input("Sedute PROPOSTE:", value=0, min_value=0, key="num_proposte")
+            # CHIAVI "z_" PER FORZARE LO ZERO
+            n_proposte = st.number_input("Sedute PROPOSTE:", value=0, min_value=0, key="z_proposte")
 
         frequenza_sedute = st.text_input("Frequenza Sedute:", placeholder="Es. 1 a settimana", key="input_freq")
 
@@ -187,21 +204,24 @@ if scelta == "📝 NUOVA SCHEDA":
         col_conferma, col_totale = st.columns([1, 1])
         
         with col_conferma:
-            n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=0, min_value=0, key="num_accettate")
+            # CHIAVI "z_" PER FORZARE LO ZERO
+            n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=0, min_value=0, key="z_accettate")
             
             totale_pieno_reale = prezzo_singolo_base * n_accettate
             
-            # --- OPZIONI (DISCRETE) ---
+            # OPZIONI (RIDUZIONE + OMAGGIO)
             riduzione_applicata = 0.0
             omaggio_nome = ""
             omaggio_sedute = 1
             
+            # MENU DISCRETO
             with st.expander("⚙️ Opzioni"):
                 st.markdown("**💰 RIDUZIONE PREZZO**")
                 st.caption(f"Totale attuale: € {totale_pieno_reale:.2f}")
                 riduzione_applicata = st.number_input("Sconto in Euro (€):", min_value=0.0, max_value=totale_pieno_reale, step=10.0, key="input_riduzione")
                 
                 st.markdown("---")
+                
                 st.markdown("**🎁 AGGIUNGI OMAGGIO**")
                 omaggio_nome = st.text_input("Nome del Regalo:", placeholder="Es. Pressoterapia", key="input_omaggio_nome")
                 omaggio_sedute = st.number_input("Numero Sedute Regalo:", min_value=1, value=1, key="input_omaggio_sedute")
@@ -253,7 +273,7 @@ if scelta == "📝 NUOVA SCHEDA":
                 }
                 st.session_state.carrello.append(item)
                 
-                # Attiva reset per prossimo giro
+                # Trigger Reset
                 st.session_state.reset_pacchetto = True
                 st.rerun()
             else:
