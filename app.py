@@ -79,7 +79,7 @@ TRATTAMENTI_STANDARD = {
     "Esosomi": 250.0,
     "Linfodrenaggio Manuale": 80.0,
     "Pulizia Viso Profonda": 150.0,
-    "Pulizia Viso 20 Minuti": 100.0,
+    "Silk Sonic": 100.0,
     
 }
 
