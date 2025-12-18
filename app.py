@@ -4,8 +4,8 @@ import pandas as pd
 import urllib.parse
 import os
 
-# --- CONFIGURAZIONE UFFICIALE v2.0 ---
-st.set_page_config(page_title="Studio Manager v2.0", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v2.1 ---
+st.set_page_config(page_title="Studio Manager v2.1", layout="centered")
 
 # --- PASSWORD PERSISTENTE ---
 password_segreta = "studio2024"
@@ -45,11 +45,17 @@ def salva_in_memoria(record):
     archivio = get_archivio_condiviso()
     archivio.append(record)
 
-# --- GESTIONE RESET INTELLIGENTE (MODIFICA FONDAMENTALE) ---
+# --- GESTIONE RESET INTELLIGENTE (MODIFICATO PER EVITARE L'ERRORE) ---
+
+# 1. Reset TOTALE (Scatta solo dopo aver SALVATO il paziente)
+if "reset_completo" in st.session_state and st.session_state.reset_completo:
+    st.session_state.final_nome = ""
+    st.session_state.final_oggi = ""
+    st.session_state.final_acconto = 0.0
+    st.session_state.reset_completo = False
+
+# 2. Reset PARZIALE (Scatta dopo AGGIUNGI AL CARRELLO o SALVA)
 if "reset_trigger" in st.session_state and st.session_state.reset_trigger:
-    # QUI CANCELLIAMO SOLO I DATI DEL PACCHETTO
-    # (Il nome e l'acconto NON vengono toccati qui, così restano visibili)
-    
     st.session_state.final_tratt_libero = ""
     st.session_state.final_prezzo_libero = 0.0
     st.session_state.final_freq = ""
@@ -59,7 +65,6 @@ if "reset_trigger" in st.session_state and st.session_state.reset_trigger:
     st.session_state.final_ideali = 0
     st.session_state.final_proposte = 0
     st.session_state.final_accettate = 0
-    
     st.session_state.reset_trigger = False
 
 # --- CARRELLO ---
@@ -109,7 +114,7 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v2.0")
+st.markdown("### 🏥 Studio Medico & Estetico - v2.1")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
@@ -226,7 +231,8 @@ if scelta == "📝 NUOVA SCHEDA":
                     "Dettaglio": f"{txt_dettaglio} - € {totale_riga_finale:.2f}"
                 }
                 st.session_state.carrello.append(item)
-                st.session_state.reset_trigger = True
+                # Attiva SOLO il reset del pacchetto, NON quello completo
+                st.session_state.reset_trigger = True 
                 st.rerun()
             else:
                 st.error("Prezzo non valido.")
@@ -330,14 +336,13 @@ if scelta == "📝 NUOVA SCHEDA":
 {blocco_totali}
 {dett}"""
             
-            # SOLO QUI CANCELLIAMO ANAGRAFICA E ACCONTO
-            st.session_state.final_nome = ""
-            st.session_state.final_oggi = ""
-            st.session_state.final_acconto = 0.0
-            
             st.session_state.carrello = []
             st.session_state.msg_finale = msg
+            
+            # ATTIVIAMO IL RESET TOTALE (che pulisce il nome) E IL PARZIALE (che pulisce il pacchetto)
+            st.session_state.reset_completo = True
             st.session_state.reset_trigger = True
+            
             st.rerun()
 
 elif scelta == "📂 ARCHIVIO GIORNALIERO":
