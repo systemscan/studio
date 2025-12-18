@@ -4,8 +4,8 @@ import pandas as pd
 import urllib.parse
 import os
 
-# --- CONFIGURAZIONE UFFICIALE v1.8 ---
-st.set_page_config(page_title="Studio Manager v1.8", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v1.9 ---
+st.set_page_config(page_title="Studio Manager v1.9", layout="centered")
 
 # --- PASSWORD PERSISTENTE ---
 password_segreta = "studio2024"
@@ -76,11 +76,11 @@ TRATTAMENTI_STANDARD = {
     "Radiofrequenza Mono e Bipolare": 100.0,
     "Biorivitalizzazione Oro 24K": 200.0,
     "PMP": 150.0,
-    "Esosomi": 250.0,
-    "Linfodrenaggio Manuale": 80.0,
-    "Pulizia Viso Profonda": 150.0,
-    "Silk Sonic": 100.0,
-    
+    "Esosomi": 150.0,
+    "Linfodrenaggio Manuale": 70.0,
+    "Laser Epilazione (Gambe)": 150.0,
+    "Pacchetto Dimagrimento Urto": 90.0,
+    "Pulizia Viso Profonda": 60.0
 }
 
 # --- FUNZIONE GRAFICA ---
@@ -108,7 +108,7 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.8")
+st.markdown("### 🏥 Studio Medico & Estetico - v1.9")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
@@ -175,12 +175,8 @@ if scelta == "📝 NUOVA SCHEDA":
         with col_conferma:
             n_accettate = st.number_input("Sedute ACCETTATE (Reali):", value=0, min_value=0, key="final_accettate")
             
-            # --- CORREZIONE BUG MATEMATICO ---
-            # Calcoliamo il limite massimo per lo sconto
+            # --- PROTEZIONE MATEMATICA ---
             totale_pieno_reale = prezzo_singolo_base * n_accettate
-            
-            # Se lo sconto memorizzato è più alto del totale (es. ho messo 50€ ma poi ho messo 0 sedute),
-            # lo correggiamo automaticamente per evitare il crash "value must be < max_value"
             if "final_riduzione" in st.session_state and st.session_state.final_riduzione > totale_pieno_reale:
                 st.session_state.final_riduzione = float(totale_pieno_reale)
             
@@ -191,7 +187,6 @@ if scelta == "📝 NUOVA SCHEDA":
             with st.expander("⚙️ Opzioni"):
                 st.markdown("**💰 RIDUZIONE PREZZO**")
                 st.caption(f"Totale attuale: € {totale_pieno_reale:.2f}")
-                # Ora max_value è sicuro perché abbiamo corretto il valore sopra
                 riduzione_applicata = st.number_input("Sconto in Euro (€):", min_value=0.0, max_value=float(totale_pieno_reale), step=10.0, key="final_riduzione")
                 
                 st.markdown("---")
@@ -269,13 +264,12 @@ if scelta == "📝 NUOVA SCHEDA":
 
     st.markdown("##### 🔒 Acconto / Blocca Prezzo")
     
-    # --- CORREZIONE BUG MATEMATICO ANCHE QUI ---
+    # --- PROTEZIONE MATEMATICA ACCONTO ---
     if "final_acconto" in st.session_state and st.session_state.final_acconto > prezzo_finale_cassa:
         st.session_state.final_acconto = float(prezzo_finale_cassa)
 
     col_acc1, col_acc2 = st.columns(2)
     with col_acc1:
-        # Ora max_value non darà errore
         acconto = st.number_input("Versa Oggi (€):", min_value=0.0, max_value=float(prezzo_finale_cassa), step=10.0, key="final_acconto")
     
     saldo = prezzo_finale_cassa - acconto
@@ -287,7 +281,8 @@ if scelta == "📝 NUOVA SCHEDA":
              st.warning("⚠️ Per confermare Omaggi o Sconti serve un acconto!")
 
     st.markdown("---")
-        # --- SALVATAGGIO (MODIFICATO PER CAPIRE L'ERRORE) ---
+    
+    # --- SALVATAGGIO CON MESSAGGI DI ERRORE INTELLIGENTI ---
     if st.button("💾 REGISTRA E COPIA PER RECEPTION", type="primary"):
         
         # 1. Controllo se manca il NOME
@@ -338,9 +333,6 @@ if scelta == "📝 NUOVA SCHEDA":
             st.session_state.msg_finale = msg
             st.session_state.reset_trigger = True
             st.rerun()
-
-        else:
-            st.error("Dati mancanti! Inserisci nome e almeno un pacchetto.")
 
 elif scelta == "📂 ARCHIVIO GIORNALIERO":
     st.markdown("#### Storico di oggi (Memoria Server)")
