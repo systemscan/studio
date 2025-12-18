@@ -4,8 +4,8 @@ import pandas as pd
 import urllib.parse
 import os
 
-# --- CONFIGURAZIONE UFFICIALE v1.9 ---
-st.set_page_config(page_title="Studio Manager v1.9", layout="centered")
+# --- CONFIGURAZIONE UFFICIALE v2.0 ---
+st.set_page_config(page_title="Studio Manager v2.0", layout="centered")
 
 # --- PASSWORD PERSISTENTE ---
 password_segreta = "studio2024"
@@ -45,11 +45,11 @@ def salva_in_memoria(record):
     archivio = get_archivio_condiviso()
     archivio.append(record)
 
-# --- GESTIONE RESET SICURO ---
+# --- GESTIONE RESET INTELLIGENTE (MODIFICA FONDAMENTALE) ---
 if "reset_trigger" in st.session_state and st.session_state.reset_trigger:
-    st.session_state.final_nome = ""
-    st.session_state.final_oggi = ""
-    st.session_state.final_acconto = 0.0
+    # QUI CANCELLIAMO SOLO I DATI DEL PACCHETTO
+    # (Il nome e l'acconto NON vengono toccati qui, così restano visibili)
+    
     st.session_state.final_tratt_libero = ""
     st.session_state.final_prezzo_libero = 0.0
     st.session_state.final_freq = ""
@@ -59,6 +59,7 @@ if "reset_trigger" in st.session_state and st.session_state.reset_trigger:
     st.session_state.final_ideali = 0
     st.session_state.final_proposte = 0
     st.session_state.final_accettate = 0
+    
     st.session_state.reset_trigger = False
 
 # --- CARRELLO ---
@@ -108,7 +109,7 @@ def crea_barra_emozionale(percentuale):
     """, unsafe_allow_html=True)
 
 # --- MENU PRINCIPALE ---
-st.markdown("### 🏥 Studio Medico & Estetico - v1.9")
+st.markdown("### 🏥 Studio Medico & Estetico - v2.0")
 scelta = st.radio("Menu:", ["📝 NUOVA SCHEDA", "📂 ARCHIVIO GIORNALIERO"], horizontal=True)
 st.divider()
 
@@ -282,18 +283,18 @@ if scelta == "📝 NUOVA SCHEDA":
 
     st.markdown("---")
     
-    # --- SALVATAGGIO CON MESSAGGI DI ERRORE INTELLIGENTI ---
+    # --- SALVATAGGIO FINALE ---
     if st.button("💾 REGISTRA E COPIA PER RECEPTION", type="primary"):
         
-        # 1. Controllo se manca il NOME
+        # 1. Controllo NOME
         if not nome_paziente:
             st.error("⚠️ ERRORE: Hai dimenticato di scrivere il NOME del paziente in alto!")
             
-        # 2. Controllo se manca il CLICK SU "AGGIUNGI AL CARRELLO"
+        # 2. Controllo CARRELLO
         elif len(st.session_state.carrello) == 0:
             st.error("⚠️ ERRORE: Il Carrello è vuoto! Devi premere il tasto '➕ AGGIUNGI AL CARRELLO' prima di salvare.")
             
-        # 3. Controllo ACCONTO (se serve)
+        # 3. Controllo ACCONTO
         elif acconto_obbligatorio and acconto <= 0:
             st.error("⛔ ERRORE: Hai applicato uno Sconto o un Omaggio. Inserisci un Acconto per procedere!")
             
@@ -311,7 +312,6 @@ if scelta == "📝 NUOVA SCHEDA":
             if acconto > 0: dett = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
             else: dett = "(Saldo completo o pagamento standard)"
 
-            # Salvataggio
             record = {
                 "Ora": datetime.datetime.now().strftime("%H:%M"),
                 "Paziente": nome_paziente,
@@ -329,6 +329,12 @@ if scelta == "📝 NUOVA SCHEDA":
 ----------------
 {blocco_totali}
 {dett}"""
+            
+            # SOLO QUI CANCELLIAMO ANAGRAFICA E ACCONTO
+            st.session_state.final_nome = ""
+            st.session_state.final_oggi = ""
+            st.session_state.final_acconto = 0.0
+            
             st.session_state.carrello = []
             st.session_state.msg_finale = msg
             st.session_state.reset_trigger = True
