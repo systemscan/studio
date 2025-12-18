@@ -287,34 +287,46 @@ if scelta == "📝 NUOVA SCHEDA":
              st.warning("⚠️ Per confermare Omaggi o Sconti serve un acconto!")
 
     st.markdown("---")
+        # --- SALVATAGGIO (MODIFICATO PER CAPIRE L'ERRORE) ---
     if st.button("💾 REGISTRA E COPIA PER RECEPTION", type="primary"):
-        if nome_paziente and len(st.session_state.carrello) > 0:
-            if acconto_obbligatorio and acconto <= 0:
-                st.error("⛔ ERRORE: Hai applicato uno Sconto o un Omaggio. Inserisci un Acconto per procedere!")
+        
+        # 1. Controllo se manca il NOME
+        if not nome_paziente:
+            st.error("⚠️ ERRORE: Hai dimenticato di scrivere il NOME del paziente in alto!")
+            
+        # 2. Controllo se manca il CLICK SU "AGGIUNGI AL CARRELLO"
+        elif len(st.session_state.carrello) == 0:
+            st.error("⚠️ ERRORE: Il Carrello è vuoto! Devi premere il tasto '➕ AGGIUNGI AL CARRELLO' prima di salvare.")
+            
+        # 3. Controllo ACCONTO (se serve)
+        elif acconto_obbligatorio and acconto <= 0:
+            st.error("⛔ ERRORE: Hai applicato uno Sconto o un Omaggio. Inserisci un Acconto per procedere!")
+            
+        # 4. TUTTO OK -> SALVA
+        else:
+            lista_str = ""
+            for item in st.session_state.carrello:
+                lista_str += f"- {item['Dettaglio']}\n"
+            
+            if ha_sconto:
+                blocco_totali = f"*TOTALE LISTINO:* € {totale_preventivo_pieno:.2f}\n*TOTALE SCONTATO:* € {totale_preventivo:.2f}"
             else:
-                lista_str = ""
-                for item in st.session_state.carrello:
-                    lista_str += f"- {item['Dettaglio']}\n"
-                
-                if ha_sconto:
-                    blocco_totali = f"*TOTALE LISTINO:* € {totale_preventivo_pieno:.2f}\n*TOTALE SCONTATO:* € {totale_preventivo:.2f}"
-                else:
-                    blocco_totali = f"*TOTALE:* € {totale_preventivo:.2f}"
-                
-                if acconto > 0: dett = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
-                else: dett = "(Saldo completo o pagamento standard)"
+                blocco_totali = f"*TOTALE:* € {totale_preventivo:.2f}"
+            
+            if acconto > 0: dett = f"🔒 ACCONTO: € {acconto:.2f}\n⏳ SALDO: € {saldo:.2f}"
+            else: dett = "(Saldo completo o pagamento standard)"
 
-                # Salvataggio
-                record = {
-                    "Ora": datetime.datetime.now().strftime("%H:%M"),
-                    "Paziente": nome_paziente,
-                    "Trattamento": trattamento_oggi,
-                    "Totale": f"€ {prezzo_finale_cassa:.2f}",
-                    "Acconto": f"€ {acconto:.2f}"
-                }
-                salva_in_memoria(record)
-                
-                msg = f"""*PAZIENTE:* {nome_paziente}
+            # Salvataggio
+            record = {
+                "Ora": datetime.datetime.now().strftime("%H:%M"),
+                "Paziente": nome_paziente,
+                "Trattamento": trattamento_oggi,
+                "Totale": f"€ {prezzo_finale_cassa:.2f}",
+                "Acconto": f"€ {acconto:.2f}"
+            }
+            salva_in_memoria(record)
+            
+            msg = f"""*PAZIENTE:* {nome_paziente}
 *OGGI:* {trattamento_oggi}
 ----------------
 *ACQUISTA:*
@@ -322,10 +334,11 @@ if scelta == "📝 NUOVA SCHEDA":
 ----------------
 {blocco_totali}
 {dett}"""
-                st.session_state.carrello = []
-                st.session_state.msg_finale = msg
-                st.session_state.reset_trigger = True
-                st.rerun()
+            st.session_state.carrello = []
+            st.session_state.msg_finale = msg
+            st.session_state.reset_trigger = True
+            st.rerun()
+
         else:
             st.error("Dati mancanti! Inserisci nome e almeno un pacchetto.")
 
