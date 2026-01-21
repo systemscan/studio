@@ -83,10 +83,12 @@ TRATTAMENTI_STANDARD = {
     "Biorivitalizzazione Oro 24K": 200.0,
     "PMP": 150.0,
     "Esosomi": 150.0,
-    "Linfodrenaggio Manuale": 70.0,
-    "Laser Epilazione (Gambe)": 150.0,
-    "Pacchetto Dimagrimento Urto": 90.0,
-    "Pulizia Viso Profonda": 60.0
+    "Linfodrenaggio Manuale Corpo 50 min": 100.0,
+    "Linfodrenaggio Manuale Viso 20 min": 60.0,
+    "Detox": 120.0,
+     "Maschera Idratazione Profonda": 120.0,
+     "MC1 (Medical Contour 1) Addome 20 min": 200.0,
+     "MC1 (Medical Contour 1) Gambe 50 min": 300.0,
 }
 
 # --- FUNZIONE GRAFICA ---
